@@ -44,7 +44,7 @@ void setup()
   myservo.attach(ServoPin);  // attaches the servo on pin 9 to the servo object
 
   //setup for distance sensor
-  Serial.begin(9600);
+ // Serial.begin(9600);
   pinMode(trigPin, OUTPUT);  // write to trigger input for Sensor
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
@@ -54,14 +54,16 @@ void loop()
 {
   accelerate(190, 4);
   distance = getDistance();
-  Serial.println(distance);
+ //Serial.println(distance);
+  delay(400);
   if (distance < 30) {
     accelerate(0, 8);
     sweep(1000, 15);
 
     if (leftDist < 30 && rightDist < 30) {
-      Serial.print("180");
+    //  Serial.print("180");
       turn(false, 1000, 250);
+      delay(500); 
       turn(false, 1000, 250);
     }
     else if (leftDist > rightDist) {
@@ -94,8 +96,8 @@ void sweep(int wait_time, int turn_speed) {
   }
   delay(wait_time / 2);                          //pauses for wait_time ms at position 180
   leftDist = getDistance();
-  Serial.print("left: ");
-  Serial.print(leftDist);
+ // Serial.print("left: ");
+ // Serial.print(leftDist);
   delay(wait_time / 2);
 
   for (pos = 180; pos >= 0; pos -= 1) {         // goes from 180 degrees to 0 degrees
@@ -104,8 +106,8 @@ void sweep(int wait_time, int turn_speed) {
   }
   delay(wait_time / 2);                         //pauses for wait_time ms at position 0
   rightDist = getDistance();
-  Serial.print("right: ");
-  Serial.println(rightDist);
+ // Serial.print("right: ");
+  //Serial.println(rightDist);
   delay(wait_time / 2);
 
   for (pos = 0; pos <= 90; pos += 1) {         // goes from 0 degrees to 90 degrees (back to the start position)
@@ -126,6 +128,7 @@ void turn(boolean right, int time, int speed) {
   delay(time);
   analogWrite(E1, 0);
   analogWrite(E2, 0);
+  delay(time);
 }
 
 /*
