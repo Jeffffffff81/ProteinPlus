@@ -49,13 +49,13 @@ void setup()
   pinMode(trigPin, OUTPUT);  // write to trigger input for Sensor
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
+  distance = getDistance();
 }
 
 void loop()
 {
   accelerate(255, 4);
   distance = getDistance();
-  //Serial.println(distance);
   //delay(200);
   Serial.print("Distance: ");
   Serial.println(distance);
@@ -70,15 +70,15 @@ void loop()
 
     if (leftDist < distThreshold && rightDist < distThreshold) {
       //  Serial.print("180");
-      turn(false, 1000, 250);
+      turn(false, 1000, 235);
       delay(250);
-      turn(false, 1000, 250);
+      turn(false, 1000, 235);
     }
     else if (leftDist > rightDist) {
-      turn(false, 1000, 250);
+      turn(false, 1000, 235);
     }
     else {
-      turn(true, 1000, 250);
+      turn(true, 1000, 235);
     }
   }
 }
