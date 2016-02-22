@@ -35,6 +35,7 @@ float rightDist;
 
 void setup()
 {
+  Serial.begin(9600);
   pinMode(10, OUTPUT);
 
   //setup for wheels
@@ -42,36 +43,48 @@ void setup()
   pinMode(M2, OUTPUT);
 
   //setup for servo
-  myservo.attach(ServoPin);  // attaches the servo on pin 9 to the servo object
+  myservo.attach(ServoPin);
 
   //setup for distance sensor
-  Serial.begin(9600);
-  pinMode(trigPin, OUTPUT);  // write to trigger input for Sensor
-  pinMode(echoPin, INPUT);  // read from echo output from Sensor
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
   digitalWrite(10, HIGH);
-  distance = getDistance();
+  distance = getDistance(); //bug fix/hack for distance = .1 initially
 }
 
 void loop()
 {
   accelerate(255, 4);
   distance = getDistance();
-  //delay(200);
-  Serial.print("Distance: ");
-  Serial.println(distance);
-  if (distance < distThreshold) {
+  avoidWall();
+  delay(400);
+  
+  checkLeft(20,2);
+  if (leftDist < 20) {
+    Serial.println("turn right!");
+  }
+
+  accelerate(255, 4);
+  distance = getDistance();
+  avoidWall();
+  delay(400);
+
+  checkRight(20,2);
+  if (rightDist < 20) {
+    Serial.println("turn left!");
+  }
+}
+
+
+//***************CONTROL****************//
+void avoidWall(){
+    if (distance < distThreshold) {
     accelerate(0, 8);
     sweep(1000, 15);
-    Serial.print("Left Distance: ");
-    Serial.println(leftDist);
-    Serial.print("Right Distance: ");
-    Serial.println(rightDist);
-    delay(500);
 
     if (leftDist < distThreshold && rightDist < distThreshold) {
-      //  Serial.print("180");
       turn(false, 1000, 235);
-      delay(250);
       turn(false, 1000, 235);
     }
     else if (leftDist > rightDist) {
@@ -84,7 +97,6 @@ void loop()
 }
 
 
-
 //FUNCTIONS****************************************************************
 
 /*
@@ -95,37 +107,61 @@ void loop()
    parameter: turn_speed - used to control how fast the servo motors position changes.
 */
 void sweep(int wait_time, int turn_speed) {
-  int dist1, dist2;
   int pos;
-  for (pos = 90; pos <= 180; pos += 1) {        // goes from 90 degrees to 180 degrees
-    // in steps of 1 degree
-    myservo.write(pos);                         // tell servo to go to position in variable 'pos'
-    delay(turn_speed);                         // waits turn_speed ms for the servo to reach the position
+
+  for (pos = 90; pos <= 180; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
   }
-  delay(wait_time / 2);                          //pauses for wait_time ms at position 180
+  delay(wait_time / 2);
   leftDist = getLowest(10);
-  //  leftDist = getDistance();
-
-  // Serial.print("left: ");
-  // Serial.print(leftDist);
   delay(wait_time / 2);
 
-  for (pos = 180; pos >= 0; pos -= 1) {         // goes from 180 degrees to 0 degrees
-    myservo.write(pos);                          // tell servo to go to position in variable 'pos'
-    delay(turn_speed);                           // waits turn_speed ms for the servo to reach the position
+  for (pos = 180; pos >= 0; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
   }
-  delay(wait_time / 2);                         //pauses for wait_time ms at position 0
+  delay(wait_time / 2);
   rightDist = getLowest(10);
-  //rightDist = getDistance();
-
-  // Serial.print("right: ");
-  //Serial.println(rightDist);
   delay(wait_time / 2);
 
-  for (pos = 0; pos <= 90; pos += 1) {         // goes from 0 degrees to 90 degrees (back to the start position)
-    // in steps of 1 degree
-    myservo.write(pos);                       // tell servo to go to position in variable 'pos'
-    delay(turn_speed);                       // waits turn_speed ms for the servo to reach the position
+  for (pos = 0; pos <= 90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+}
+
+void checkLeft(int wait_time, int turn_speed) {
+  int pos;
+  for (pos = 90; pos <= 180; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+
+  delay(wait_time / 2);
+  leftDist = getLowest(1);
+  delay(wait_time / 2);
+
+  for (pos = 180; pos >= 90; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+}
+
+void checkRight(int wait_time, int turn_speed) {
+  int pos;
+  for (pos = 90; pos >= 0; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+
+  delay(wait_time / 2);
+  rightDist = getLowest(1);
+  delay(wait_time / 2);
+
+  for (pos = 0; pos <= 90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
   }
 }
 
@@ -194,17 +230,6 @@ void accelerate(int finalSpeed, int speedChange) {
     analogWrite(E2, finalSpeed);   //PWM Speed Control
     //delay(1);
   }
-}
-
-int getAverage(int count) {
-  int sum = 0;
-  for (int i = 0; i < count; i++) {
-    if (sum > 30000)
-      return (int) (sum / count);
-    sum += getDistance();
-  }
-
-  return (int) (sum / count);
 }
 
 int getLowest(int count) {
