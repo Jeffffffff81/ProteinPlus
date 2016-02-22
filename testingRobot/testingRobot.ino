@@ -25,8 +25,9 @@ float temperature;
 float soundSpeed;
 
 // Ranging distance for HC-SR05
-int maxRange = 500;
-int minRange = 2;
+const int maxRange = 500;
+const int minRange = 2;
+const float distThreshold = 30;
 
 float dist;
 float leftDist;
@@ -44,7 +45,7 @@ void setup()
   myservo.attach(ServoPin);  // attaches the servo on pin 9 to the servo object
 
   //setup for distance sensor
- // Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(trigPin, OUTPUT);  // write to trigger input for Sensor
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
@@ -52,26 +53,33 @@ void setup()
 
 void loop()
 {
-  accelerate(190, 4);
+  accelerate(255, 4);
   distance = getDistance();
- //Serial.println(distance);
-  delay(400);
-  if (distance < 30) {
+  //Serial.println(distance);
+  //delay(200);
+  Serial.print("Distance: ");
+  Serial.println(distance);
+  if (distance < distThreshold) {
     accelerate(0, 8);
     sweep(1000, 15);
+    Serial.print("Left Distance: ");
+    Serial.println(leftDist);
+    Serial.print("Right Distance: ");
+    Serial.println(rightDist);
+    delay(500);
 
-    if (leftDist < 30 && rightDist < 30) {
-    //  Serial.print("180");
+    if (leftDist < distThreshold && rightDist < distThreshold) {
+      //  Serial.print("180");
       turn(false, 1000, 250);
-      delay(500); 
+      delay(250);
       turn(false, 1000, 250);
     }
     else if (leftDist > rightDist) {
       turn(false, 1000, 250);
     }
     else {
-        turn(true, 1000, 250);
-      }
+      turn(true, 1000, 250);
+    }
   }
 }
 
@@ -95,9 +103,11 @@ void sweep(int wait_time, int turn_speed) {
     delay(turn_speed);                         // waits turn_speed ms for the servo to reach the position
   }
   delay(wait_time / 2);                          //pauses for wait_time ms at position 180
-  leftDist = getDistance();
- // Serial.print("left: ");
- // Serial.print(leftDist);
+  leftDist = getLowest(10);
+  //  leftDist = getDistance();
+
+  // Serial.print("left: ");
+  // Serial.print(leftDist);
   delay(wait_time / 2);
 
   for (pos = 180; pos >= 0; pos -= 1) {         // goes from 180 degrees to 0 degrees
@@ -105,8 +115,10 @@ void sweep(int wait_time, int turn_speed) {
     delay(turn_speed);                           // waits turn_speed ms for the servo to reach the position
   }
   delay(wait_time / 2);                         //pauses for wait_time ms at position 0
-  rightDist = getDistance();
- // Serial.print("right: ");
+  rightDist = getLowest(10);
+  //rightDist = getDistance();
+
+  // Serial.print("right: ");
   //Serial.println(rightDist);
   delay(wait_time / 2);
 
@@ -161,28 +173,50 @@ float getDistance(void) {
 void accelerate(int finalSpeed, int speedChange) {
   digitalWrite(M1, HIGH);
   digitalWrite(M2, HIGH);
+
   if (finalSpeed > currentSpeed) {
-    for (currentSpeed;  currentSpeed <= finalSpeed; currentSpeed += speedChange) {
+    for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += speedChange) {
       //Serial.println(currentSpeed);
       analogWrite(E1, currentSpeed);   //PWM Speed Control
       analogWrite(E2, currentSpeed);   //PWM Speed Control
-      delay(100);
+      delay(1);
     }
     analogWrite(E1, finalSpeed);   //PWM Speed Control
     analogWrite(E2, finalSpeed);   //PWM Speed Control
-    delay(1);
-  } else {
-    for (currentSpeed;  currentSpeed >= finalSpeed; currentSpeed -= speedChange) {
+  } else if (finalSpeed < currentSpeed) {
+    for (currentSpeed;  currentSpeed > finalSpeed; currentSpeed -= speedChange) {
       //Serial.println(currentSpeed);
       analogWrite(E1, currentSpeed);   //PWM Speed Control
       analogWrite(E2, currentSpeed);   //PWM Speed Control
-      delay(100);
+      delay(1);
     }
     analogWrite(E1, finalSpeed);   //PWM Speed Control
     analogWrite(E2, finalSpeed);   //PWM Speed Control
-    delay(1);
+    //delay(1);
   }
 }
 
+int getAverage(int count) {
+  int sum = 0;
+  for (int i = 0; i < count; i++) {
+    if (sum > 30000)
+      return (int) (sum / count);
+    sum += getDistance();
+  }
+
+  return (int) (sum / count);
+}
+
+int getLowest(int count) {
+  int current;
+  int lowest = getDistance();
+  for (int i = 0; i < count; i++) {
+    current = getDistance();
+    if ( current < lowest ) {
+      lowest = current;
+    }
+  }
+  return lowest;
+}
 
 
