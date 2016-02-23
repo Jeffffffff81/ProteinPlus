@@ -58,26 +58,28 @@ void loop()
   accelerate(255, 4);
   distance = getDistance();
   avoidWall();
-  delay(400);
+  delay(800);
   
-  checkLeft(20,2);
-  if (leftDist < 20) {
+  int dist = turnAndCheck(60, 30, 2, 1);
+  if (dist < 20) {
     Serial.println("turn right!");
   }
 
   accelerate(255, 4);
   distance = getDistance();
   avoidWall();
-  delay(400);
+  delay(800);
 
-  checkRight(20,2);
-  if (rightDist < 20) {
+  dist = turnAndCheck(-60, 30, 2, 1);
+  if (dist < 20) {
     Serial.println("turn left!");
   }
 }
 
-
-//***************CONTROL****************//
+//**************HIGHLEVELFUNCTIONS******************//
+/*
+ * Checks to see if its going to crash into a wall and take corrective action
+ */
 void avoidWall(){
     if (distance < distThreshold) {
     accelerate(0, 8);
@@ -97,8 +99,6 @@ void avoidWall(){
 }
 
 
-//FUNCTIONS****************************************************************
-
 /*
    Function: sweep - Rotates the servo motor so it turns 90 degrees to the left and then to the right.
 
@@ -107,64 +107,23 @@ void avoidWall(){
    parameter: turn_speed - used to control how fast the servo motors position changes.
 */
 void sweep(int wait_time, int turn_speed) {
-  int pos;
+  
+  leftDist = turnAndCheck(90, wait_time, turn_speed, 10);
 
-  for (pos = 90; pos <= 180; pos += 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-  delay(wait_time / 2);
-  leftDist = getLowest(10);
-  delay(wait_time / 2);
+  rightDist = turnAndCheck(-90, wait_time, turn_speed, 10);
 
-  for (pos = 180; pos >= 0; pos -= 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-  delay(wait_time / 2);
-  rightDist = getLowest(10);
-  delay(wait_time / 2);
+}
 
-  for (pos = 0; pos <= 90; pos += 1) {
-    myservo.write(pos);
-    delay(turn_speed);
+
+//CHENs problem
+void slowDown(int standOff){
+  //currSpeed;
+  while(getDistance() > standOff) {
+    accelerate(getDistance(), 1);
   }
 }
 
-void checkLeft(int wait_time, int turn_speed) {
-  int pos;
-  for (pos = 90; pos <= 180; pos += 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-
-  delay(wait_time / 2);
-  leftDist = getLowest(1);
-  delay(wait_time / 2);
-
-  for (pos = 180; pos >= 90; pos -= 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-}
-
-void checkRight(int wait_time, int turn_speed) {
-  int pos;
-  for (pos = 90; pos >= 0; pos -= 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-
-  delay(wait_time / 2);
-  rightDist = getLowest(1);
-  delay(wait_time / 2);
-
-  for (pos = 0; pos <= 90; pos += 1) {
-    myservo.write(pos);
-    delay(turn_speed);
-  }
-}
-
+//**************LOWLEVELFUNCTIONS******************//
 /*
    Function - moveWheels - so far just for testing purposes
 */
@@ -212,26 +171,61 @@ void accelerate(int finalSpeed, int speedChange) {
 
   if (finalSpeed > currentSpeed) {
     for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += speedChange) {
-      //Serial.println(currentSpeed);
-      analogWrite(E1, currentSpeed);   //PWM Speed Control
-      analogWrite(E2, currentSpeed);   //PWM Speed Control
+      analogWrite(E1, currentSpeed);   
+      analogWrite(E2, currentSpeed);   
       delay(1);
     }
-    analogWrite(E1, finalSpeed);   //PWM Speed Control
-    analogWrite(E2, finalSpeed);   //PWM Speed Control
+    analogWrite(E1, finalSpeed);   
+    analogWrite(E2, finalSpeed);   
   } else if (finalSpeed < currentSpeed) {
     for (currentSpeed;  currentSpeed > finalSpeed; currentSpeed -= speedChange) {
-      //Serial.println(currentSpeed);
-      analogWrite(E1, currentSpeed);   //PWM Speed Control
-      analogWrite(E2, currentSpeed);   //PWM Speed Control
+  
+      analogWrite(E1, currentSpeed);
+      analogWrite(E2, currentSpeed);   
       delay(1);
     }
-    analogWrite(E1, finalSpeed);   //PWM Speed Control
-    analogWrite(E2, finalSpeed);   //PWM Speed Control
-    //delay(1);
+    analogWrite(E1, finalSpeed);
+    analogWrite(E2, finalSpeed);
   }
 }
 
+/*
+ * Turns servo to dir degrees (0 is straight ahead), then returns the distance,
+ */
+int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
+  int pos;
+  //If turning left
+  for (pos = 90; pos <= dir+90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  //If turning right
+  for (pos = 90; pos >= dir+90; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+
+  delay(wait_time / 2);
+  int dist = getLowest(count);
+  delay(wait_time / 2);
+  
+  //Return from left
+  for (pos = dir+90; pos >= 90; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  //Return from right
+  for (pos = dir+90; pos <= 90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  return dist;
+}
+
+/*
+ * Reads distance multiple times and returns
+ * the lowest
+ */
 int getLowest(int count) {
   int current;
   int lowest = getDistance();
@@ -243,5 +237,3 @@ int getLowest(int count) {
   }
   return lowest;
 }
-
-
