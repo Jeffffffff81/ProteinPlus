@@ -10,11 +10,11 @@ int currentSpeed = 0;
 
 //Servo declarations
 Servo myservo;  // create servo object to control a servo
-int ServoPin = 9;
+int ServoPin = 3;
 
 //temperature sensor and HC-SR05 declarations
-const int trigPin = 13;
-const int echoPin = 12;
+const int trigPin = 9;
+const int echoPin = 10;
 
 const int tempSensor = A2;
 
@@ -24,19 +24,11 @@ float readTemp;
 float temperature;
 float soundSpeed;
 
-// Ranging distance for HC-SR05
-const int maxRange = 500;
-const int minRange = 2;
-const float distThreshold = 30;
-
 float dist;
-float leftDist;
-float rightDist;
 
 void setup()
 {
-  Serial.begin(9600);
-  pinMode(10, OUTPUT);
+  //Serial.begin(9600);
 
   //setup for wheels
   pinMode(M1, OUTPUT);
@@ -46,45 +38,42 @@ void setup()
   myservo.attach(ServoPin);
 
   //setup for distance sensor
-
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
-  digitalWrite(10, HIGH);
+  digitalWrite(11, LOW);
+  digitalWrite(8, HIGH);
+  
+  digitalWrite(1, LOW);
+  digitalWrite(2, HIGH);
   distance = getDistance(); //bug fix/hack for distance = .1 initially
 }
 
 void loop()
 {
   accelerate(255, 4);
-  distance = getDistance();
-  avoidWall();
-  delay(800);
-  
-  int dist = turnAndCheck(60, 30, 2, 1);
-  if (dist < 20) {
-    Serial.println("turn right!");
-  }
+  //avoidWall(30);
+  //delay(800);
 
-  accelerate(255, 4);
-  distance = getDistance();
-  avoidWall();
-  delay(800);
+  //angleCorrectLeft();
 
-  dist = turnAndCheck(-60, 30, 2, 1);
-  if (dist < 20) {
-    Serial.println("turn left!");
-  }
+  //accelerate(255, 4);
+  //avoidWall(30);
+  //delay(800);
+
+  //angleCorrectRight();
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
 /*
- * Checks to see if its going to crash into a wall and take corrective action
- */
-void avoidWall(){
-    if (distance < distThreshold) {
+   Checks to see if its going to crash into a wall and take corrective action
+*/
+void avoidWall(int distThreshold) {
+  distance = getDistance();
+  if (distance < distThreshold) {
     accelerate(0, 8);
-    sweep(1000, 15);
-
+    int leftDist = turnAndCheck(90, 1000, 15, 10);
+    int rightDist = turnAndCheck(-90, 1000, 15, 10);
+  
     if (leftDist < distThreshold && rightDist < distThreshold) {
       turn(false, 1000, 235);
       turn(false, 1000, 235);
@@ -99,26 +88,10 @@ void avoidWall(){
 }
 
 
-/*
-   Function: sweep - Rotates the servo motor so it turns 90 degrees to the left and then to the right.
-
-   parameter: wait_time - the amount of time that the servo motor pauses when it faces 90 degrees to the left and right.
-
-   parameter: turn_speed - used to control how fast the servo motors position changes.
-*/
-void sweep(int wait_time, int turn_speed) {
-  
-  leftDist = turnAndCheck(90, wait_time, turn_speed, 10);
-
-  rightDist = turnAndCheck(-90, wait_time, turn_speed, 10);
-
-}
-
-
 //CHENs problem
-void slowDown(int standOff){
+void slowDown(int standOff) {
   //currSpeed;
-  while(getDistance() > standOff) {
+  while (getDistance() > standOff) {
     accelerate(getDistance(), 1);
   }
 }
@@ -171,17 +144,17 @@ void accelerate(int finalSpeed, int speedChange) {
 
   if (finalSpeed > currentSpeed) {
     for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += speedChange) {
-      analogWrite(E1, currentSpeed);   
-      analogWrite(E2, currentSpeed);   
+      analogWrite(E1, currentSpeed);
+      analogWrite(E2, currentSpeed);
       delay(1);
     }
-    analogWrite(E1, finalSpeed);   
-    analogWrite(E2, finalSpeed);   
+    analogWrite(E1, finalSpeed);
+    analogWrite(E2, finalSpeed);
   } else if (finalSpeed < currentSpeed) {
     for (currentSpeed;  currentSpeed > finalSpeed; currentSpeed -= speedChange) {
-  
+
       analogWrite(E1, currentSpeed);
-      analogWrite(E2, currentSpeed);   
+      analogWrite(E2, currentSpeed);
       delay(1);
     }
     analogWrite(E1, finalSpeed);
@@ -190,17 +163,67 @@ void accelerate(int finalSpeed, int speedChange) {
 }
 
 /*
- * Turns servo to dir degrees (0 is straight ahead), then returns the distance,
- */
-int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
+  For if we have to turn left a bit.
+*/
+void angleCorrectLeft() {
+  int delta = turnAndCheckDelta(70, 10, 3, 4);
+  slowLeftWheel(delta, 500);
+}
+
+/*
+  For if we have to turn left a bit.
+*/
+void angleCorrectRight() {
+  int delta = turnAndCheckDelta(70, 100, 3, 4);
+  slowRightWheel(delta, 200);
+}
+
+
+/*
+   Turns servo to dir degrees (0 is straight ahead), then returns change in distance,
+*/
+int turnAndCheckDelta(int dir, int wait_time, int turn_speed, int count) {
   int pos;
   //If turning left
-  for (pos = 90; pos <= dir+90; pos += 1) {
+  for (pos = 90; pos <= dir + 90; pos += 1) {
     myservo.write(pos);
     delay(turn_speed);
   }
   //If turning right
-  for (pos = 90; pos >= dir+90; pos -= 1) {
+  for (pos = 90; pos >= dir + 90; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+
+  int initialDist = getLowest(count);
+  delay(wait_time);
+  int finalDist = getLowest(count);
+
+  //Return from left
+  for (pos = dir + 90; pos >= 90; pos -= 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  //Return from right
+  for (pos = dir + 90; pos <= 90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  return initialDist - finalDist;
+}
+
+/*
+   Turns and checks distance
+*/
+int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
+  int pos;
+  //If turning left
+  for (pos = 90; pos <= dir + 90; pos += 1) {
+    myservo.write(pos);
+    delay(turn_speed);
+  }
+  //If turning right
+  for (pos = 90; pos >= dir + 90; pos -= 1) {
     myservo.write(pos);
     delay(turn_speed);
   }
@@ -208,14 +231,14 @@ int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
   delay(wait_time / 2);
   int dist = getLowest(count);
   delay(wait_time / 2);
-  
+
   //Return from left
-  for (pos = dir+90; pos >= 90; pos -= 1) {
+  for (pos = dir + 90; pos >= 90; pos -= 1) {
     myservo.write(pos);
     delay(turn_speed);
   }
   //Return from right
-  for (pos = dir+90; pos <= 90; pos += 1) {
+  for (pos = dir + 90; pos <= 90; pos += 1) {
     myservo.write(pos);
     delay(turn_speed);
   }
@@ -223,9 +246,9 @@ int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
 }
 
 /*
- * Reads distance multiple times and returns
- * the lowest
- */
+   Reads distance multiple times and returns
+   the lowest
+*/
 int getLowest(int count) {
   int current;
   int lowest = getDistance();
@@ -237,3 +260,26 @@ int getLowest(int count) {
   }
   return lowest;
 }
+
+/*
+   Slow whell by percentage between 0 and 1, for certain length of time.
+*/
+void slowLeftWheel(double percent, int time) {
+  if (percent > 1 || percent < 1) {
+    return;
+  }
+  digitalWrite(E1, currentSpeed - percent * currentSpeed);
+  delay(time);
+  digitalWrite(E1, currentSpeed);
+}
+
+void slowRightWheel(double percent, int time) {
+  if (percent > 1 || percent < 1) {
+    return;
+  }
+  digitalWrite(E2, currentSpeed - percent * currentSpeed);
+  delay(time);
+  digitalWrite(E2, currentSpeed);
+}
+
+
