@@ -1,66 +1,52 @@
 #include <Servo.h>
 
-//Arduino PWM Speed Control：
+//PINS:
 int E1 = 5;
 int M1 = 4;
 int E2 = 6;
 int M2 = 7;
 
-int currentSpeed = 0;
+Servo myservo;
+int ServoPin = 9;
 
-//Servo declarations
-Servo myservo;  // create servo object to control a servo
-int ServoPin = 3;
-
-//temperature sensor and HC-SR05 declarations
-const int trigPin = 9;
-const int echoPin = 10;
-
+const int trigPin = 13;
+const int echoPin = 12;
 const int tempSensor = A2;
 
-float duration;
-float distance;
-float readTemp;
-float temperature;
-float soundSpeed;
-
-float dist;
+//GLOBAL VARIABLES:
+int distance;
+int currentSpeed = 0;
+int servoPos;
 
 void setup()
 {
-  //Serial.begin(9600);
-
-  //setup for wheels
   pinMode(M1, OUTPUT);
   pinMode(M2, OUTPUT);
 
-  //setup for servo
   myservo.attach(ServoPin);
 
-  //setup for distance sensor
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
-  digitalWrite(11, LOW);
-  digitalWrite(8, HIGH);
-  
-  digitalWrite(1, LOW);
-  digitalWrite(2, HIGH);
+
   distance = getDistance(); //bug fix/hack for distance = .1 initially
 }
 
 void loop()
 {
-  accelerate(255, 4);
-  //avoidWall(30);
-  //delay(800);
+  int delta;
+  changeSpeed(255, 4);
+  avoidWall(30);
+  delay(800);
 
-  //angleCorrectLeft();
+  delta = turnAndCheckDelta(70, 10, 3, 4);
+  slowLeftWheel(delta, 500);
 
-  //accelerate(255, 4);
-  //avoidWall(30);
-  //delay(800);
+  changeSpeed(255, 4);
+  avoidWall(30);
+  delay(800);
 
-  //angleCorrectRight();
+  delta = turnAndCheckDelta(-70, 10, 3, 4);
+  slowRightWheel(delta, 500);
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
@@ -70,10 +56,10 @@ void loop()
 void avoidWall(int distThreshold) {
   distance = getDistance();
   if (distance < distThreshold) {
-    accelerate(0, 8);
+    changeSpeed(0, 8);
     int leftDist = turnAndCheck(90, 1000, 15, 10);
     int rightDist = turnAndCheck(-90, 1000, 15, 10);
-  
+
     if (leftDist < distThreshold && rightDist < distThreshold) {
       turn(false, 1000, 235);
       turn(false, 1000, 235);
@@ -92,7 +78,7 @@ void avoidWall(int distThreshold) {
 void slowDown(int standOff) {
   //currSpeed;
   while (getDistance() > standOff) {
-    accelerate(getDistance(), 1);
+    changeSpeed(getDistance(), 1);
   }
 }
 
@@ -115,6 +101,12 @@ void turn(boolean right, int time, int speed) {
    Function: getDistance - returns the distance measured  by the HC-SR05 and prints it onto the serial monitor
 */
 float getDistance(void) {
+  float duration;
+  float readTemp;
+  float temperature;
+  float soundSpeed;
+  float thisDistance;
+
   // set up HC-SR04 by applying a 10 microsecond pulse to it
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -132,18 +124,17 @@ float getDistance(void) {
 
   // reads the duration of the pulse when echoPin is high
   duration = pulseIn(echoPin, HIGH);
-  distance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
+  thisDistance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
 
-  return distance;
+  return thisDistance;
 }
 
-
-void accelerate(int finalSpeed, int speedChange) {
+void changeSpeed(int finalSpeed, int acceleration) {
   digitalWrite(M1, HIGH);
   digitalWrite(M2, HIGH);
 
   if (finalSpeed > currentSpeed) {
-    for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += speedChange) {
+    for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += acceleration) {
       analogWrite(E1, currentSpeed);
       analogWrite(E2, currentSpeed);
       delay(1);
@@ -151,7 +142,7 @@ void accelerate(int finalSpeed, int speedChange) {
     analogWrite(E1, finalSpeed);
     analogWrite(E2, finalSpeed);
   } else if (finalSpeed < currentSpeed) {
-    for (currentSpeed;  currentSpeed > finalSpeed; currentSpeed -= speedChange) {
+    for (currentSpeed;  currentSpeed > finalSpeed; currentSpeed -= acceleration) {
 
       analogWrite(E1, currentSpeed);
       analogWrite(E2, currentSpeed);
@@ -161,23 +152,6 @@ void accelerate(int finalSpeed, int speedChange) {
     analogWrite(E2, finalSpeed);
   }
 }
-
-/*
-  For if we have to turn left a bit.
-*/
-void angleCorrectLeft() {
-  int delta = turnAndCheckDelta(70, 10, 3, 4);
-  slowLeftWheel(delta, 500);
-}
-
-/*
-  For if we have to turn left a bit.
-*/
-void angleCorrectRight() {
-  int delta = turnAndCheckDelta(70, 100, 3, 4);
-  slowRightWheel(delta, 200);
-}
-
 
 /*
    Turns servo to dir degrees (0 is straight ahead), then returns change in distance,
@@ -187,12 +161,12 @@ int turnAndCheckDelta(int dir, int wait_time, int turn_speed, int count) {
   //If turning left
   for (pos = 90; pos <= dir + 90; pos += 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
   //If turning right
   for (pos = 90; pos >= dir + 90; pos -= 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
 
   int initialDist = getLowest(count);
@@ -202,14 +176,15 @@ int turnAndCheckDelta(int dir, int wait_time, int turn_speed, int count) {
   //Return from left
   for (pos = dir + 90; pos >= 90; pos -= 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
   //Return from right
   for (pos = dir + 90; pos <= 90; pos += 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
-  return initialDist - finalDist;
+  //delta should not depend on wait time. so divide by wait time:
+  return (initialDist - finalDist)/wait_time;
 }
 
 /*
@@ -220,12 +195,12 @@ int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
   //If turning left
   for (pos = 90; pos <= dir + 90; pos += 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
   //If turning right
   for (pos = 90; pos >= dir + 90; pos -= 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
 
   delay(wait_time / 2);
@@ -235,12 +210,12 @@ int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
   //Return from left
   for (pos = dir + 90; pos >= 90; pos -= 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
   //Return from right
   for (pos = dir + 90; pos <= 90; pos += 1) {
     myservo.write(pos);
-    delay(turn_speed);
+    delay(1 / turn_speed);
   }
   return dist;
 }
@@ -268,7 +243,7 @@ void slowLeftWheel(double percent, int time) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E1, currentSpeed - percent * currentSpeed);
+  digitalWrite(E1, currentSpeed - (percent * currentSpeed));
   delay(time);
   digitalWrite(E1, currentSpeed);
 }
@@ -277,7 +252,7 @@ void slowRightWheel(double percent, int time) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E2, currentSpeed - percent * currentSpeed);
+  digitalWrite(E2, currentSpeed - (percent * currentSpeed));
   delay(time);
   digitalWrite(E2, currentSpeed);
 }
