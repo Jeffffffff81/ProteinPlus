@@ -35,23 +35,15 @@ void setup()
 void loop() {
   changeSpeed(0, 4);
 
-  for (int i = 0; i < 10; i ++); {
+  for (int i = 0; i < 10000; i ++); {
     distance = getLowestDist(10);
-    delay(30);
+    delay(10);
     if (distance < 30) {
       avoidWall(30);
     }
   }
   Serial.println(distance);
-  checkAndAdjustRight(15);
-  
-  for (int i = 0; i < 10; i ++); {
-    distance = getLowestDist(10);
-    delay(30);
-    if (distance < 30) {
-      avoidWall(30);
-    }
-  }
+
 
 }
 
@@ -90,11 +82,11 @@ void avoidWall(int distThreshold) {
 void checkAndAdjustRight(int threshhold) {
 
   turnServo(70);
-  delay(100);
-  int dist1 = getLowestDist(10);
+  delay(50);
+  int dist1 = getLowestDist(5);
   if(dist1 < threshhold) {
-    delay(200);
-    int dist2 = getLowestDist(10);
+    delay(50);
+    int dist2 = getLowestDist(5);
     int delta = dist1-dist2;
     
     if(delta > 0) {
@@ -108,11 +100,11 @@ void checkAndAdjustRight(int threshhold) {
 void checkAndAdjustLeft(int threshhold) {
 
   turnServo(-70);
-  delay(100);
-  int dist1 = getLowestDist(10);
+  delay(50);
+  int dist1 = getLowestDist(5);
   if(dist1 < threshhold) {
-    delay(200);
-    int dist2 = getLowestDist(10);
+    delay(50);
+    int dist2 = getLowestDist(5);
     int delta = dist1-dist2;
     
     if(delta > 0) {
@@ -219,13 +211,13 @@ void turnServo(int dir) {
   while (servoPos <= dir + 90) {
     myservo.write(servoPos);
     servoPos++;
-    delay(3);
+    delay(2);
   }
   //If turning right
   while (servoPos >= dir + 90) {
     myservo.write(servoPos);
     servoPos--;
-    delay(3);
+    delay(2);
   }
 }
 
