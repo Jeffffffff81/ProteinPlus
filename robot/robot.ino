@@ -254,19 +254,13 @@ float getSpeed(int sensorPin) {
   int count = 0;
   int wheelSpeed;
   unsigned long startTime, endTime;
-  while (count != 2){
-    float hallEffect = analogRead(sensorPin);
-    if (hallEffect < 100) {
-      if (count == 0) {
-        startTime = millis();
-        count++;
-      }
-      else {
-        endTime = millis();
-        count++;
-      }
-    }  
-  }
+  while (analogRead(sensorPin) < 100) {}
+  while (analogRead(sensorPin) > 100) {}
+  startTime = millis();
+  while (analogRead(sensorPin) < 100) {}
+  while (analogRead(sensorPin) > 100) {}
+  endTime = millis();
+  
   wheelSpeed = 0.2 / (float)(endTime - startTime) * 1000.0;
 }
 
