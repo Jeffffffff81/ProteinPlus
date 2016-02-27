@@ -16,10 +16,11 @@ const int tempSensor = A2;
 //GLOBAL VARIABLES:
 int distance;
 int currentSpeed = 0;
-int servoPos;
+int servoPos = 0;
 
 void setup()
 {
+  Serial.begin(9600);
   pinMode(M1, OUTPUT);
   pinMode(M2, OUTPUT);
 
@@ -31,22 +32,27 @@ void setup()
   distance = getDistance(); //bug fix/hack for distance = .1 initially
 }
 
-void loop()
-{
-  int delta;
-  changeSpeed(255, 4);
-  avoidWall(30);
-  delay(800);
+void loop() {
+  changeSpeed(0, 4);
 
-  delta = turnAndCheckDelta(70, 10, 3, 4);
-  slowLeftWheel(delta, 500);
+  for (int i = 0; i < 10; i ++); {
+    distance = getLowestDist(10);
+    delay(30);
+    if (distance < 30) {
+      avoidWall(30);
+    }
+  }
+  Serial.println(distance);
+  checkAndAdjustRight(15);
+  
+  for (int i = 0; i < 10; i ++); {
+    distance = getLowestDist(10);
+    delay(30);
+    if (distance < 30) {
+      avoidWall(30);
+    }
+  }
 
-  changeSpeed(255, 4);
-  avoidWall(30);
-  delay(800);
-
-  delta = turnAndCheckDelta(-70, 10, 3, 4);
-  slowRightWheel(delta, 500);
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
@@ -54,41 +60,76 @@ void loop()
    Checks to see if its going to crash into a wall and take corrective action
 */
 void avoidWall(int distThreshold) {
-  distance = getDistance();
-  if (distance < distThreshold) {
-    changeSpeed(0, 8);
-    int leftDist = turnAndCheck(90, 1000, 15, 10);
-    int rightDist = turnAndCheck(-90, 1000, 15, 10);
+  //slowDown(0); //problem here?
 
-    if (leftDist < distThreshold && rightDist < distThreshold) {
-      turn(false, 1000, 235);
-      turn(false, 1000, 235);
-    }
-    else if (leftDist > rightDist) {
-      turn(false, 1000, 235);
-    }
-    else {
-      turn(true, 1000, 235);
-    }
+  changeSpeed(0, 1);
+  turnServo(90);
+  delay(200);
+  int leftDist = getLowestDist(10);
+  delay(200);
+
+  turnServo(-90);
+  delay(200);
+  int rightDist = getLowestDist(10);
+  delay(200);
+  turnServo(0);
+
+  if (leftDist < distThreshold && rightDist < distThreshold) {
+    turn(true, 1000, 235);
+    turn(true, 1000, 235);
   }
+  else if (leftDist > rightDist) {
+    turn(true, 1000, 235);
+  }
+  else {
+    turn(false, 1000, 235);
+  }
+
 }
 
+void checkAndAdjustRight(int threshhold) {
 
-//CHENs problem
-void slowDown(int standOff) {
-  //currSpeed;
-  while (getDistance() > standOff) {
-    changeSpeed(getDistance(), 1);
+  turnServo(70);
+  delay(100);
+  int dist1 = getLowestDist(10);
+  if(dist1 < threshhold) {
+    delay(200);
+    int dist2 = getLowestDist(10);
+    int delta = dist1-dist2;
+    
+    if(delta > 0) {
+      Serial.println("adjust right!");
+    }
   }
+
+  turnServo(0);
+}
+
+void checkAndAdjustLeft(int threshhold) {
+
+  turnServo(-70);
+  delay(100);
+  int dist1 = getLowestDist(10);
+  if(dist1 < threshhold) {
+    delay(200);
+    int dist2 = getLowestDist(10);
+    int delta = dist1-dist2;
+    
+    if(delta > 0) {
+      Serial.println("adjust left!");
+    }
+  }
+
+  turnServo(0);
 }
 
 //**************LOWLEVELFUNCTIONS******************//
 /*
    Function - moveWheels - so far just for testing purposes
 */
-void turn(boolean right, int time, int speed) {
-  digitalWrite(M1, right);
-  digitalWrite(M2, !right);
+void turn(boolean left, int time, int speed) {
+  digitalWrite(M1, !left);
+  digitalWrite(M2, left);
   analogWrite(E1, speed);   //PWM Speed Control
   analogWrite(E2, speed);   //PWM Speed Control
   delay(time);
@@ -137,7 +178,7 @@ void changeSpeed(int finalSpeed, int acceleration) {
     for (currentSpeed;  currentSpeed < finalSpeed; currentSpeed += acceleration) {
       analogWrite(E1, currentSpeed);
       analogWrite(E2, currentSpeed);
-      delay(1);
+      delay(10);
     }
     analogWrite(E1, finalSpeed);
     analogWrite(E2, finalSpeed);
@@ -146,7 +187,7 @@ void changeSpeed(int finalSpeed, int acceleration) {
 
       analogWrite(E1, currentSpeed);
       analogWrite(E2, currentSpeed);
-      delay(1);
+      delay(10);
     }
     analogWrite(E1, finalSpeed);
     analogWrite(E2, finalSpeed);
@@ -154,77 +195,10 @@ void changeSpeed(int finalSpeed, int acceleration) {
 }
 
 /*
-   Turns servo to dir degrees (0 is straight ahead), then returns change in distance,
-*/
-int turnAndCheckDelta(int dir, int wait_time, int turn_speed, int count) {
-  int pos;
-  //If turning left
-  for (pos = 90; pos <= dir + 90; pos += 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  //If turning right
-  for (pos = 90; pos >= dir + 90; pos -= 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-
-  int initialDist = getLowest(count);
-  delay(wait_time);
-  int finalDist = getLowest(count);
-
-  //Return from left
-  for (pos = dir + 90; pos >= 90; pos -= 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  //Return from right
-  for (pos = dir + 90; pos <= 90; pos += 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  //delta should not depend on wait time. so divide by wait time:
-  return (initialDist - finalDist)/wait_time;
-}
-
-/*
-   Turns and checks distance
-*/
-int turnAndCheck(int dir, int wait_time, int turn_speed, int count) {
-  int pos;
-  //If turning left
-  for (pos = 90; pos <= dir + 90; pos += 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  //If turning right
-  for (pos = 90; pos >= dir + 90; pos -= 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-
-  delay(wait_time / 2);
-  int dist = getLowest(count);
-  delay(wait_time / 2);
-
-  //Return from left
-  for (pos = dir + 90; pos >= 90; pos -= 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  //Return from right
-  for (pos = dir + 90; pos <= 90; pos += 1) {
-    myservo.write(pos);
-    delay(1 / turn_speed);
-  }
-  return dist;
-}
-
-/*
    Reads distance multiple times and returns
    the lowest
 */
-int getLowest(int count) {
+int getLowestDist(int count) {
   int current;
   int lowest = getDistance();
   for (int i = 0; i < count; i++) {
@@ -234,6 +208,45 @@ int getLowest(int count) {
     }
   }
   return lowest;
+}
+
+void turnServo(int dir) {
+  if (dir > 90 || dir < -90) {
+    return;
+  }
+
+  //if turning left:
+  while (servoPos <= dir + 90) {
+    myservo.write(servoPos);
+    servoPos++;
+    delay(3);
+  }
+  //If turning right
+  while (servoPos >= dir + 90) {
+    myservo.write(servoPos);
+    servoPos--;
+    delay(3);
+  }
+}
+
+void slowDown (float minDist) {
+  int chenSpeed = currentSpeed;
+  int initialSpeed = currentSpeed;
+  int initialDistance = getLowestDist(5);
+  int currentDistance = initialDistance;
+
+  while (currentSpeed > 100) {
+    chenSpeed = initialSpeed / (initialDistance - minDist) * (currentDistance - minDist);
+    digitalWrite(M1, HIGH);
+    digitalWrite(M2, HIGH);
+    analogWrite(E1, chenSpeed);   //PWM Speed Control
+    analogWrite(E2, chenSpeed);   //PWM Speed Control
+    delay(30);
+    currentDistance = getLowestDist(10);
+  }
+  analogWrite(E1, 0);   //PWM Speed Control
+  analogWrite(E2, 0);   //PWM Speed Control
+  currentSpeed = 0;
 }
 
 /*
