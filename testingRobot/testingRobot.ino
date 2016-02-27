@@ -52,32 +52,33 @@ void setup()
 
 void loop()
 {
-  accelerate(190, 4);
-  distance = getDistance();
- //Serial.println(distance);
-  delay(400);
-  if (distance < 30) {
-    accelerate(0, 8);
-    sweep(1000, 15);
-
-    if (leftDist < 30 && rightDist < 30) {
-    //  Serial.print("180");
-      turn(false, 1000, 250);
-      delay(500); 
-      turn(false, 1000, 250);
-    }
-    else if (leftDist > rightDist) {
-      turn(false, 1000, 250);
-    }
-    else {
-        turn(true, 1000, 250);
-      }
-  }
+  
 }
 
 
 
 //FUNCTIONS****************************************************************
+
+void slowDown (int initialSpeed, float initialDistance) {
+  int currentSpeed = initialSpeed;
+  int currentDistance = initialDistance;
+
+  while (currentSpeed > 100) {
+    currentSpeed = initialSpeed / (initialDistance - minDist) * (currentDistance - minDist);
+    digitalWrite(M1, HIGH);
+    digitalWrite(M2, HIGH);
+    analogWrite(E1, currentSpeed);   //PWM Speed Control
+    analogWrite(E2, currentSpeed);   //PWM Speed Control
+    delay(30);
+    currentDistance = getLowest(10);
+  }
+    analogWrite(E1, 0);   //PWM Speed Control
+    analogWrite(E2, 0);   //PWM Speed Control
+  
+}
+
+
+
 
 /*
    Function: sweep - Rotates the servo motor so it turns 90 degrees to the left and then to the right.
@@ -185,4 +186,26 @@ void accelerate(int finalSpeed, int speedChange) {
 }
 
 
+//Garbage ************************
 
+ accelerate(190, 4);
+  distance = getDistance();
+ //Serial.println(distance);
+  delay(400);
+  if (distance < 30) {
+    accelerate(0, 8);
+    sweep(1000, 15);
+
+    if (leftDist < 30 && rightDist < 30) {
+    //  Serial.print("180");
+      turn(false, 1000, 250);
+      delay(500); 
+      turn(false, 1000, 250);
+    }
+    else if (leftDist > rightDist) {
+      turn(false, 1000, 250);
+    }
+    else {
+        turn(true, 1000, 250);
+      }
+  }
