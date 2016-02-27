@@ -15,8 +15,10 @@ int ServoPin = 9;
 //temperature sensor and HC-SR05 declarations
 const int trigPin = 13;
 const int echoPin = 12;
+const int leftSensor = A2;
+const int rightSensor = A3;
 
-const int tempSensor = A2;
+const int tempSensor = A1;
 
 float duration;
 float distance;
@@ -34,6 +36,9 @@ float dist;
 float leftDist;
 float rightDist;
 
+/*******for calibration*******/
+float interceptL, interceptR, maxSpeedL, maxSpeedR, gradientL, gradientR, maxSpeed;
+
 void setup()
 {
   pinMode(10, OUTPUT);
@@ -50,11 +55,20 @@ void setup()
   pinMode(trigPin, OUTPUT);  // write to trigger input for Sensor
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
+  delay(3000);
+  calibrate(leftSensor, rightSensor);
+  if (maxSpeedL > maxSpeedR)
+    maxSpeed = maxSpeedR;
+  else
+    maxSpeed = maxSpeedL;
   distance = getDistance();
 }
 
 void loop()
 {
+  setSpeed(maxSpeed/2);
+  
+  /*
   accelerate(255, 4);
   distance = getDistance();
   //delay(200);
@@ -81,7 +95,7 @@ void loop()
     else {
       turn(true, 1000, 235);
     }
-  }
+  }*/
 }
 
 
@@ -234,5 +248,56 @@ void slowDown (int initialSpeed, float initialDistance) {
     analogWrite(E1, 0);   //PWM Speed Control
     analogWrite(E2, 0);   //PWM Speed Control
   
+}
+
+float getSpeed(int sensorPin) {
+  int count = 0;
+  int wheelSpeed;
+  unsigned long startTime, endTime;
+  while (count != 2){
+    float hallEffect = analogRead(sensorPin);
+    if (hallEffect < 100) {
+      if (count == 0) {
+        startTime = millis();
+        count++;
+      }
+      else {
+        endTime = millis();
+        count++;
+      }
+    }  
+  }
+  wheelSpeed = 0.2 / (float)(endTime - startTime) * 1000.0;
+}
+
+
+void calibrate (int leftSensor, int rightSensor) {
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+  analogWrite(E1, 255); 
+  analogWrite(E2, 255);
+  maxSpeedL = getSpeed(leftSensor);
+  maxSpeedR = getSpeed(rightSensor);
+  analogWrite(E1, 150); 
+  analogWrite(E2, 150);
+  float anotherSpeedL = getSpeed(leftSensor);
+  float anotherSpeedR = getSpeed(rightSensor);
+  gradientL = (255.0 - 150.0)/(maxSpeedL - anotherSpeedL);
+  gradientR = (255.0 - 150.0)/(maxSpeedR - anotherSpeedR);
+  interceptL = gradientL * maxSpeedL + 255.0;
+  interceptR = gradientR * maxSpeedR + 255.0;
+  analogWrite(E1, 0); 
+  analogWrite(E2, 0);
+  delay(1000);
+}
+
+void setSpeed (float speedMps) {
+  int leftWheel = (int) (gradientL * speedMps + interceptL);
+  int rightWheel = (int) (gradientR * speedMps + interceptR);
+
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+  analogWrite(E1, leftWheel); 
+  analogWrite(E2, rightWheel);
 }
 
