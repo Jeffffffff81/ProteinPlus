@@ -14,7 +14,7 @@ const int echoPin = 12;
 const int tempSensor = A2;
 
 //GLOBAL VARIABLES:
-int distance;
+float distance;
 int currentSpeed = 0;
 int servoPos = 0;
 
@@ -33,18 +33,28 @@ void setup()
 }
 
 void loop() {
-  changeSpeed(0, 4);
 
-  for (int i = 0; i < 10000; i ++); {
-    distance = getLowestDist(10);
-    delay(10);
+  for (int i = 0; i < 4; i ++) {
+    changeSpeed(0, 4);
+    distance = getLowestDist(5);
     if (distance < 30) {
       avoidWall(30);
     }
+    delay(250);
   }
+  
+  Serial.println(getDistance());
+  
+  turnServo(70);
+  delay(100);
+  distance = getLowestDist(5);
+  Serial.print("left ");
   Serial.println(distance);
-
-
+  turnServo(0);
+  if (distance < 30) {
+    Serial.println("turn right?");
+ 
+  }
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
@@ -84,12 +94,12 @@ void checkAndAdjustRight(int threshhold) {
   turnServo(70);
   delay(50);
   int dist1 = getLowestDist(5);
-  if(dist1 < threshhold) {
+  if (dist1 < threshhold) {
     delay(50);
     int dist2 = getLowestDist(5);
-    int delta = dist1-dist2;
-    
-    if(delta > 0) {
+    int delta = dist1 - dist2;
+
+    if (delta > 0) {
       Serial.println("adjust right!");
     }
   }
@@ -102,12 +112,12 @@ void checkAndAdjustLeft(int threshhold) {
   turnServo(-70);
   delay(50);
   int dist1 = getLowestDist(5);
-  if(dist1 < threshhold) {
+  if (dist1 < threshhold) {
     delay(50);
     int dist2 = getLowestDist(5);
-    int delta = dist1-dist2;
-    
-    if(delta > 0) {
+    int delta = dist1 - dist2;
+
+    if (delta > 0) {
       Serial.println("adjust left!");
     }
   }
@@ -190,9 +200,9 @@ void changeSpeed(int finalSpeed, int acceleration) {
    Reads distance multiple times and returns
    the lowest
 */
-int getLowestDist(int count) {
-  int current;
-  int lowest = getDistance();
+float getLowestDist(int count) {
+  float current;
+  float lowest = getDistance();
   for (int i = 0; i < count; i++) {
     current = getDistance();
     if ( current < lowest ) {
