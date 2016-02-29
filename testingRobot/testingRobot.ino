@@ -1,5 +1,4 @@
 #include <Servo.h>
-#include <NewPing.h>
 
 //PINS:
 int E1 = 5;
@@ -21,7 +20,6 @@ int MAX_DISTANCE = 1000;
 float distance;
 int currentSpeed = 0;
 int servoPos = 0;
-NewPing sonar(trigPin, echoPin, MAX_DISTANCE);
 
 void setup()
 {
@@ -125,10 +123,6 @@ void turn(boolean left, int time, int speed) {
    Function: getDistance - returns the distance measured  by the HC-SR05 and prints it onto the serial monitor
 */
 float getDistance(void) {
-  
-
-  //return sonar.ping_cm();
-
   
   float duration;
   float readTemp;
