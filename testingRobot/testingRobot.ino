@@ -55,17 +55,25 @@ void loop() {
   delay(100);
   
   if (distance < 40) {
+    int adjust = 70;
 
     float dist2 = getDistance();
     //delta is the rate at which the wall is approaching. positive delta means wall is getting closer
     float delta =  distance - dist2;
     while(delta > .1 ) {
-      analogWrite(E2, 100);
-      delay(50);
+      //slow/turn wheels
+      analogWrite(E1, 180);
+      analogWrite(E2, 80);
+      
+      //get new delta
       distance = getLowestDist(3);
-      delay(50);
+      delay(100);
       dist2 = getLowestDist(3);
       delta =  distance - dist2;
+
+      //also keep the servo facing the side wall
+      turnServo(adjust);
+      adjust++;
     }
   }
   turnServo(0);
