@@ -1,4 +1,5 @@
 #include <Servo.h>
+#include <NewPing.h>
 
 //PINS:
 int E1 = 5;
@@ -13,10 +14,14 @@ const int trigPin = 13;
 const int echoPin = 12;
 const int tempSensor = A2;
 
+//CONSTANTS:
+int MAX_DISTANCE = 1000;
+
 //GLOBAL VARIABLES:
 float distance;
 int currentSpeed = 0;
 int servoPos = 0;
+NewPing sonar(trigPin, echoPin, MAX_DISTANCE);
 
 void setup()
 {
@@ -33,27 +38,32 @@ void setup()
 }
 
 void loop() {
-
+  while (true) {
+    Serial.println(getDistance());
+    delay(100);
+  }
+  
   for (int i = 0; i < 4; i ++) {
     changeSpeed(0, 4);
-    distance = getLowestDist(5);
+    distance = getLowestDist(10);
     if (distance < 30) {
       avoidWall(30);
     }
     delay(250);
   }
-  
-  Serial.println(getDistance());
-  
+
+  Serial.print(getDistance());
+
   turnServo(70);
-  delay(100);
+  delay(300);
   distance = getLowestDist(5);
-  Serial.print("left ");
+  delay(300);
+  Serial.print("  left ");
   Serial.println(distance);
   turnServo(0);
   if (distance < 30) {
     Serial.println("turn right?");
- 
+
   }
 }
 
@@ -89,41 +99,6 @@ void avoidWall(int distThreshold) {
 
 }
 
-void checkAndAdjustRight(int threshhold) {
-
-  turnServo(70);
-  delay(50);
-  int dist1 = getLowestDist(5);
-  if (dist1 < threshhold) {
-    delay(50);
-    int dist2 = getLowestDist(5);
-    int delta = dist1 - dist2;
-
-    if (delta > 0) {
-      Serial.println("adjust right!");
-    }
-  }
-
-  turnServo(0);
-}
-
-void checkAndAdjustLeft(int threshhold) {
-
-  turnServo(-70);
-  delay(50);
-  int dist1 = getLowestDist(5);
-  if (dist1 < threshhold) {
-    delay(50);
-    int dist2 = getLowestDist(5);
-    int delta = dist1 - dist2;
-
-    if (delta > 0) {
-      Serial.println("adjust left!");
-    }
-  }
-
-  turnServo(0);
-}
 
 //**************LOWLEVELFUNCTIONS******************//
 /*
@@ -144,6 +119,11 @@ void turn(boolean left, int time, int speed) {
    Function: getDistance - returns the distance measured  by the HC-SR05 and prints it onto the serial monitor
 */
 float getDistance(void) {
+  
+
+  //return sonar.ping_cm();
+
+  
   float duration;
   float readTemp;
   float temperature;
@@ -156,14 +136,6 @@ float getDistance(void) {
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-
-  // reads the current temperature in degree Celsius
-  readTemp = analogRead(tempSensor);
-  temperature = (5.0 * readTemp * 100.0) / 1024;
-  // calculate the corresponding speed of sound in m/s
-  soundSpeed = 331.5 + (0.6 * temperature);
-  // convert speed of sound from m/s to us/cm
-  soundSpeed = 29 * soundSpeed / 343; //?
 
   // reads the duration of the pulse when echoPin is high
   duration = pulseIn(echoPin, HIGH);
