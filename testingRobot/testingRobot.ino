@@ -34,37 +34,44 @@ void setup()
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  distance = getDistance(); //bug fix/hack for distance = .1 initially
+  distance = getLowestDist(10); //bug fix/hack for distance = .1 initially
 }
 
 void loop() {
-  while (true) {
-    Serial.println(getDistance());
-    delay(100);
-  }
-  
+
   for (int i = 0; i < 4; i ++) {
-    changeSpeed(0, 4);
+    changeSpeed(255, 4);
     distance = getLowestDist(10);
     if (distance < 30) {
       avoidWall(30);
     }
-    delay(250);
+    delay(150);
+    Serial.println(distance);
   }
 
-  Serial.print(getDistance());
+  
 
   turnServo(70);
-  delay(300);
-  distance = getLowestDist(5);
-  delay(300);
-  Serial.print("  left ");
-  Serial.println(distance);
-  turnServo(0);
-  if (distance < 30) {
-    Serial.println("turn right?");
+  delay(100);
+  distance = getDistance();
+  delay(100);
+  
+  if (distance < 40) {
+    
+    Serial.print(distance);
+    float dist2 = getDistance();
+    if(dist2 < 3000 && dist2 < distance) {
+      //delta is the rate at which the wall is appraching
+      float delta = distance - dist2;
+      Serial.print("delta:  ");
+      Serial.println(delta);
+      digitalWrite(E2, 0);
+      delay(1000);
+    }
+
 
   }
+  turnServo(0);
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
@@ -226,21 +233,21 @@ void slowDown (float minDist) {
 /*
    Slow whell by percentage between 0 and 1, for certain length of time.
 */
-void slowLeftWheel(double percent, int time) {
+void slowLeftWheel(float percent, int timee) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E1, currentSpeed - (percent * currentSpeed));
-  delay(time);
+  digitalWrite(E1, (int)(percent * (float)currentSpeed));
+  delay(timee);
   digitalWrite(E1, currentSpeed);
 }
 
-void slowRightWheel(double percent, int time) {
+void slowRightWheel(double percent, int timee) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E2, currentSpeed - (percent * currentSpeed));
-  delay(time);
+  digitalWrite(E2, 0);
+  delay(1000);
   digitalWrite(E2, currentSpeed);
 }
 
