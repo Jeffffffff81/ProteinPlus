@@ -52,24 +52,23 @@ void loop() {
   
 
   turnServo(70);
-  delay(100);
+  delay(50);
   distance = getDistance();
   delay(100);
   
   if (distance < 40) {
-    
-    Serial.print(distance);
+
     float dist2 = getDistance();
-    if(dist2 < 3000 && dist2 < distance) {
-      //delta is the rate at which the wall is appraching
-      float delta = distance - dist2;
-      Serial.print("delta:  ");
-      Serial.println(delta);
-      digitalWrite(E2, 0);
-      delay(1000);
+    //delta is the rate at which the wall is approaching. positive delta means wall is getting closer
+    float delta =  distance - dist2;
+    while(delta > .1 ) {
+      analogWrite(E2, 100);
+      delay(50);
+      distance = getLowestDist(3);
+      delay(50);
+      dist2 = getLowestDist(3);
+      delta =  distance - dist2;
     }
-
-
   }
   turnServo(0);
 }
@@ -233,22 +232,22 @@ void slowDown (float minDist) {
 /*
    Slow whell by percentage between 0 and 1, for certain length of time.
 */
-void slowLeftWheel(float percent, int timee) {
+void slowLeftWheel(float percent, int time) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E1, (int)(percent * (float)currentSpeed));
-  delay(timee);
-  digitalWrite(E1, currentSpeed);
+  analogWrite(E1, (int)(percent * (float)currentSpeed));
+  delay(time);
+  analogWrite(E1, currentSpeed);
 }
 
-void slowRightWheel(double percent, int timee) {
+void slowRightWheel(float percent, int time) {
   if (percent > 1 || percent < 1) {
     return;
   }
-  digitalWrite(E2, 0);
-  delay(1000);
-  digitalWrite(E2, currentSpeed);
+  analogWrite(E2, (int)(percent * (float)currentSpeed));
+  delay(time);
+  analogWrite(E2, currentSpeed);
 }
 
 
