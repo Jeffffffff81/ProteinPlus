@@ -1,20 +1,20 @@
 #include <Servo.h>
 
 //PINS:
-int E1 = 5;
-int M1 = 4;
-int E2 = 6;
-int M2 = 7;
+const int E1 = 5;
+const int M1 = 4;
+const int E2 = 6;
+const int M2 = 7;
 
 Servo myservo;
-int ServoPin = 9;
+const int ServoPin = 9;
 
 const int trigPin = 13;
 const int echoPin = 12;
-const int tempSensor = A2;
+const int tempPin = A5;
 
 //CONSTANTS:
-int MAX_DISTANCE = 1000;
+const int MAX_DISTANCE = 1000;
 
 //GLOBAL VARIABLES:
 float distance;
@@ -36,7 +36,10 @@ void setup()
 }
 
 void loop() {
-
+  while(true) {
+    Serial.println(getDistance());
+    delay(100);
+  }
   for (int i = 0; i < 4; i ++) {
     changeSpeed(255, 4);
     distance = getLowestDist(4);
@@ -133,25 +136,24 @@ void turn(boolean left, int time, int speed) {
 float getDistance(void) {
   
   float duration;
-  float readTemp;
   float temperature;
-  float soundSpeed;
   float thisDistance;
 
-  // set up HC-SR04 by applying a 10 microsecond pulse to it
+  temperature = (5.0 * analogRead(tempPin) * 100.0) / 1024;
+
+  // send pulse
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  // reads the duration of the pulse when echoPin is high
-  //third argument is timeout in microseconds
+  //receive pulse. Third argument is timout in microseconds
   duration = pulseIn(echoPin, HIGH, 100000);
   if(duration == 0) {
     return MAX_DISTANCE;
   }
-  thisDistance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
+  thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
 
   return thisDistance;
 }
