@@ -82,7 +82,7 @@ void setup()
 void loop()
 {
   //accelerate(255, 4);
-  distance = getDistance();
+  //distance = getDistance();
   //delay(200);
   //Serial.print("Distance: ");
   //Serial.println(distance);
