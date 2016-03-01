@@ -63,11 +63,11 @@ void setup()
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
   delay(3000);
-  
-  /*  Copy from here till the end of setup(). When test it, hold the robot in air unitil the calibration is 
-   *  done. Notice that when it is done, both magnets will be aligned with its corresponding hall sensor, and
-   *  there will be a 3 second delay for us to put it on the ground.
-   */
+
+  /*  Copy from here till the end of setup(). When test it, hold the robot in air unitil the calibration is
+      done. Notice that when it is done, both magnets will be aligned with its corresponding hall sensor, and
+      there will be a 3 second delay for us to put it on the ground.
+  */
   calibrate(leftSensor, rightSensor);
   leftTime = millis();
   rightTime = millis();
@@ -76,7 +76,7 @@ void setup()
   currentSpeed = 255;
   //analogWrite(E1, 253);
   //analogWrite(E2, 255);
-  
+
 }
 
 void loop()
@@ -91,28 +91,28 @@ void loop()
   //Serial.print(rightTime);
   //Serial.print("    ");
   //Serial.println(abs(leftTime - rightTime));
-  
 
-  /* temporarily comment out the slowdown function, improvements are needed and described below if   
-   * straightline moving works. 
-   * 
-   * copy the rest of the code.
-   * 
-   * Also, copy the functions getMaxSpeed(), calibrate(), straightLineCorrection().
-   */
-   
+
+  /* temporarily comment out the slowdown function, improvements are needed and described below if
+     straightline moving works.
+
+     copy the rest of the code.
+
+     Also, copy the functions getMaxSpeed(), calibrate(), straightLineCorrection().
+  */
+
   /*if (distance < distThreshold) {
     slowDown(currentSpeed, distance);
 
     /*
-     * this whole part need to be re-written. It basically do the following few thing in order.
-     * 1. slowdown (already done)
-     * 2. sweep (it should be working)
-     * 3. turn (need to work on it, specifically to find a way to control the angle of turning.
-     * 4. accelerate to max speed.
-     * 
-     */
-    /*sweep(1000, 15);
+       this whole part need to be re-written. It basically do the following few thing in order.
+       1. slowdown (already done)
+       2. sweep (it should be working)
+       3. turn (need to work on it, specifically to find a way to control the angle of turning.
+       4. accelerate to max speed.
+
+  */
+  /*sweep(1000, 15);
     Serial.print("Left Distance: ");
     Serial.println(leftDist);
     Serial.print("Right Distance: ");
@@ -120,35 +120,36 @@ void loop()
     delay(500);
 
     if (leftDist < distThreshold && rightDist < distThreshold) {
-      //  Serial.print("180");
-      turn(false, 1000, 235);
-      delay(250);
-      turn(false, 1000, 235);
+    //  Serial.print("180");
+    turn(false, 1000, 235);
+    delay(250);
+    turn(false, 1000, 235);
     }
     else if (leftDist > rightDist) {
-      turn(false, 1000, 235);
+    turn(false, 1000, 235);
     }
     else {
-      turn(true, 1000, 235);
+    turn(true, 1000, 235);
     }
+    }
+
+    else {*/
+  if (analogRead(leftSensor) < 50) {
+    leftTime = millis();
+  }
+  if (analogRead(rightSensor) < 50) {
+    rightTime = millis();
+  }
+  if (leftTime > rightTime) {
+    if (leftTime - rightTime < 500)
+      straightLineCorrection(leftTime, rightTime);
+  }
+  else {
+    if (rightTime - leftTime < 500)
+      straightLineCorrection(leftTime, rightTime);
   }
 
-  else {*/
-    if (analogRead(leftSensor) < 50 && analogRead(rightSensor) < 50) {
-      leftTime = millis();
-      rightTime = millis();
-      Serial.println(leftTime);
-    }
-    if (leftTime > rightTime) {
-      if (leftTime - rightTime < 500)
-        straightLineCorrection(leftTime, rightTime);
-    }
-    else {
-      if (rightTime - leftTime < 500)
-        straightLineCorrection(leftTime, rightTime);
-    }
-    
-      
+
   //}
 }
 
@@ -299,9 +300,9 @@ void slowDown (int initialSpeed, float initialDistance) {
     delay(30);
     currentDistance = getLowest(10);
   }
-    analogWrite(E1, 0);   //PWM Speed Control
-    analogWrite(E2, 0);   //PWM Speed Control
-  
+  analogWrite(E1, 0);   //PWM Speed Control
+  analogWrite(E2, 0);   //PWM Speed Control
+
 }
 
 float getMaxSpeed(int sensorPin) {
@@ -314,7 +315,7 @@ float getMaxSpeed(int sensorPin) {
   startTime = millis();
   while (analogRead(sensorPin) > 100) {}
   endTime = millis();
-  
+
   wheelSpeed = 0.2 / (float)(endTime - startTime) * 1000.0;
   return wheelSpeed;
 }
@@ -323,12 +324,12 @@ float getMaxSpeed(int sensorPin) {
 void calibrate (int leftSensor, int rightSensor) {
   digitalWrite(M1, HIGH);
   digitalWrite(M2, HIGH);
-  
-  analogWrite(E1, 140); 
+
+  analogWrite(E1, 60);
   while (analogRead(leftSensor) > 50) {}
   analogWrite(E1, 0);
-  
-  analogWrite(E2, 140);
+
+  analogWrite(E2, 60);
   while (analogRead(rightSensor) > 50) {}
   analogWrite(E2, 0);
 
