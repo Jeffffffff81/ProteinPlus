@@ -71,8 +71,8 @@ void setup()
   calibrate(leftSensor, rightSensor);
   leftTime = millis();
   rightTime = millis();
-  distance = getDistance();
-  maxSpeed = getMaxSpeed(leftSensor);
+  //distance = getDistance();
+  //maxSpeed = getMaxSpeed(leftSensor);
   currentSpeed = 255;
   //analogWrite(E1, 253);
   //analogWrite(E2, 255);
