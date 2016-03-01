@@ -36,8 +36,15 @@ float dist;
 float leftDist;
 float rightDist;
 
-/*******for calibration*******/
-float interceptL, interceptR, maxSpeedL, maxSpeedR, gradientL, gradientR, maxSpeed;
+/* copy the next four line */
+/*******for straight line*******/
+const int tolerableDiff = 100;
+const float speedAdjustPercentage = 0.93;
+const int correctionTime = 500;
+unsigned long leftTime, rightTime;
+
+/**********for turning**********/
+float maxSpeed;
 
 void setup()
 {
@@ -56,27 +63,54 @@ void setup()
   pinMode(echoPin, INPUT);  // read from echo output from Sensor
   digitalWrite(10, HIGH);
   delay(3000);
+  
+  /*  Copy from here till the end of setup(). When test it, hold the robot in air unitil the calibration is 
+   *  done. Notice that when it is done, both magnets will be aligned with its corresponding hall sensor, and
+   *  there will be a 3 second delay for us to put it on the ground.
+   */
   calibrate(leftSensor, rightSensor);
-  if (maxSpeedL > maxSpeedR)
-    maxSpeed = maxSpeedR;
-  else
-    maxSpeed = maxSpeedL;
+  leftTime = millis();
+  rightTime = millis();
   distance = getDistance();
+  maxSpeed = getMaxSpeed(leftSensor);
+  currentSpeed = 255;
+  
 }
 
 void loop()
 {
-  setSpeed(maxSpeed/2);
-  
-  /*
-  accelerate(255, 4);
+  //accelerate(255, 4);
   distance = getDistance();
   //delay(200);
-  Serial.print("Distance: ");
-  Serial.println(distance);
-  if (distance < distThreshold) {
+  //Serial.print("Distance: ");
+  //Serial.println(distance);
+  Serial.print(leftTime);
+  Serial.print("    ");
+  Serial.print(rightTime);
+  Serial.print("    ");
+  Serial.println(abs(leftTime - rightTime));
+  
+
+  /* temporarily comment out the slowdown function, improvements are needed and described below if   
+   * straightline moving works. 
+   * 
+   * copy the rest of the code.
+   * 
+   * Also, copy the functions getMaxSpeed(), calibrate(), straightLineCorrection().
+   */
+   
+  /*if (distance < distThreshold) {
     slowDown(currentSpeed, distance);
-    sweep(1000, 15);
+
+    /*
+     * this whole part need to be re-written. It basically do the following few thing in order.
+     * 1. slowdown (already done)
+     * 2. sweep (it should be working)
+     * 3. turn (need to work on it, specifically to find a way to control the angle of turning.
+     * 4. accelerate to max speed.
+     * 
+     */
+    /*sweep(1000, 15);
     Serial.print("Left Distance: ");
     Serial.println(leftDist);
     Serial.print("Right Distance: ");
@@ -95,7 +129,24 @@ void loop()
     else {
       turn(true, 1000, 235);
     }
-  }*/
+  }
+
+  else {*/
+    if (analogRead(leftSensor) < 50)
+      leftTime = millis();
+    if (analogRead(rightSensor) < 50)
+      rightTime = millis();
+    if (leftTime > rightTime) {
+      if (leftTime - rightTime < 500)
+        straightLineCorrection(leftTime, rightTime);
+    }
+    else {
+      if (rightTime - leftTime < 500)
+        straightLineCorrection(leftTime, rightTime);
+    }
+    
+      
+  //}
 }
 
 
@@ -250,48 +301,52 @@ void slowDown (int initialSpeed, float initialDistance) {
   
 }
 
-float getSpeed(int sensorPin) {
-  int count = 0;
+float getMaxSpeed(int sensorPin) {
   int wheelSpeed;
   unsigned long startTime, endTime;
+
+  analogWrite(E1, 255);
+  analogWrite(E2, 255);
   while (analogRead(sensorPin) < 100) {}
-  while (analogRead(sensorPin) > 100) {}
   startTime = millis();
-  while (analogRead(sensorPin) < 100) {}
   while (analogRead(sensorPin) > 100) {}
   endTime = millis();
   
   wheelSpeed = 0.2 / (float)(endTime - startTime) * 1000.0;
+  return wheelSpeed;
 }
 
 
 void calibrate (int leftSensor, int rightSensor) {
   digitalWrite(M1, HIGH);
   digitalWrite(M2, HIGH);
-  analogWrite(E1, 255); 
-  analogWrite(E2, 255);
-  maxSpeedL = getSpeed(leftSensor);
-  maxSpeedR = getSpeed(rightSensor);
-  analogWrite(E1, 150); 
-  analogWrite(E2, 150);
-  float anotherSpeedL = getSpeed(leftSensor);
-  float anotherSpeedR = getSpeed(rightSensor);
-  gradientL = (255.0 - 150.0)/(maxSpeedL - anotherSpeedL);
-  gradientR = (255.0 - 150.0)/(maxSpeedR - anotherSpeedR);
-  interceptL = gradientL * maxSpeedL + 255.0;
-  interceptR = gradientR * maxSpeedR + 255.0;
-  analogWrite(E1, 0); 
+  
+  analogWrite(E1, 120); 
+  while (analogRead(leftSensor) > 50) {}
+  analogWrite(E1, 0);
+  
+  analogWrite(E2, 120);
+  while (analogRead(rightSensor) > 50) {}
   analogWrite(E2, 0);
-  delay(1000);
+
+  delay(3000);
 }
 
-void setSpeed (float speedMps) {
-  int leftWheel = (int) (gradientL * speedMps + interceptL);
-  int rightWheel = (int) (gradientR * speedMps + interceptR);
-
-  digitalWrite(M1, HIGH);
-  digitalWrite(M2, HIGH);
-  analogWrite(E1, leftWheel); 
-  analogWrite(E2, rightWheel);
+void straightLineCorrection (unsigned long leftTime, unsigned long rightTime) {
+  if (abs(leftTime - rightTime) > tolerableDiff) {
+    if (leftTime > rightTime) {
+      analogWrite(E2, (int) (currentSpeed * speedAdjustPercentage));
+      analogWrite(E1, currentSpeed);
+      delay(correctionTime);
+      analogWrite(E2, currentSpeed);
+    }
+    else {
+      analogWrite(E1, (int) (currentSpeed * speedAdjustPercentage));
+      analogWrite(E2, currentSpeed);
+      delay(correctionTime);
+      analogWrite(E1, currentSpeed);
+    }
+  }
 }
+
 
