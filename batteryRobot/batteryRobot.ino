@@ -48,24 +48,24 @@ void loop() {
     delay(50);
   }
 
-  
+
 
   turnServo(70);
   delay(50);
   distance = getDistance();
   delay(100);
-  
+
   if (distance < 30) {
     int adjust = 70;
 
     float dist2 = getDistance();
     //delta is the rate at which the wall is approaching. positive delta means wall is getting closer
     float delta =  distance - dist2;
-    while(delta > .1 ) {
+    while (delta > .1 ) {
       //slow/turn wheels
       analogWrite(E1, 180);
       analogWrite(E2, 80);
-      
+
       //get new delta
       distance = getLowestDist(3);
       delay(100);
@@ -74,7 +74,46 @@ void loop() {
 
       //also keep the servo facing the side wall
       turnServo(adjust);
-      adjust++;
+      adjust += 2;
+    }
+  }
+  turnServo(0);
+
+  for (int i = 0; i < 4; i ++) {
+    changeSpeed(255, 4);
+    distance = getLowestDist(4);
+    if (distance < 40) {
+      avoidWall(40);
+    }
+    Serial.println(distance);
+    delay(50);
+  }
+
+  turnServo(-70);
+  delay(50);
+  distance = getDistance();
+  delay(100);
+
+  if (distance < 30) {
+    int adjust = -70;
+
+    float dist2 = getDistance();
+    //delta is the rate at which the wall is approaching. positive delta means wall is getting closer
+    float delta =  distance - dist2;
+    while (delta > .1 ) {
+      //slow/turn wheels
+      analogWrite(E1, 80);
+      analogWrite(E2, 180);
+
+      //get new delta
+      distance = getLowestDist(3);
+      delay(100);
+      dist2 = getLowestDist(3);
+      delta =  distance - dist2;
+
+      //also keep the servo facing the side wall
+      turnServo(adjust);
+      adjust -= 2;
     }
   }
   turnServo(0);
@@ -132,7 +171,7 @@ void turn(boolean left, int time, int speed) {
    Function: getDistance - returns the distance measured  by the HC-SR05 and prints it onto the serial monitor
 */
 float getDistance(void) {
-  
+
   float duration;
   float temperature;
   float thisDistance;
@@ -148,7 +187,7 @@ float getDistance(void) {
 
   //receive pulse. Third argument is timout in microseconds
   duration = pulseIn(echoPin, HIGH, 100000);
-  if(duration == 0) {
+  if (duration == 0) {
     return MAX_DISTANCE;
   }
   thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
