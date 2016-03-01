@@ -32,14 +32,12 @@ void setup()
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
+  turnServo(0);
   distance = getLowestDist(10); //bug fix/hack for distance = .1 initially
 }
 
 void loop() {
-  while(true) {
-    Serial.println(getDistance());
-    delay(100);
-  }
+
   for (int i = 0; i < 4; i ++) {
     changeSpeed(255, 4);
     distance = getLowestDist(4);
@@ -57,7 +55,7 @@ void loop() {
   distance = getDistance();
   delay(100);
   
-  if (distance < 40) {
+  if (distance < 30) {
     int adjust = 70;
 
     float dist2 = getDistance();
@@ -87,9 +85,9 @@ void loop() {
    Checks to see if its going to crash into a wall and take corrective action
 */
 void avoidWall(int distThreshold) {
-  //slowDown(0); //problem here?
+  slowDown(10);
 
-  changeSpeed(0, 1);
+  //changeSpeed(0, 2);
   turnServo(90);
   delay(200);
   int leftDist = getLowestDist(10);
@@ -223,7 +221,7 @@ void slowDown (float minDist) {
   int initialDistance = getLowestDist(5);
   int currentDistance = initialDistance;
 
-  while (currentSpeed > 100) {
+  while (chenSpeed > 100) {
     chenSpeed = initialSpeed / (initialDistance - minDist) * (currentDistance - minDist);
     digitalWrite(M1, HIGH);
     digitalWrite(M2, HIGH);

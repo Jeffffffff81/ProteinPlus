@@ -1,20 +1,20 @@
 #include <Servo.h>
 
 //PINS:
-int E1 = 5;
-int M1 = 4;
-int E2 = 6;
-int M2 = 7;
+const int E1 = 5;
+const int M1 = 4;
+const int E2 = 6;
+const int M2 = 7;
 
 Servo myservo;
-int ServoPin = 9;
+const int ServoPin = 9;
 
 const int trigPin = 13;
 const int echoPin = 12;
-const int tempSensor = A2;
+const int tempPin = A5;
 
 //CONSTANTS:
-int MAX_DISTANCE = 1000;
+const int MAX_DISTANCE = 1000;
 
 //GLOBAL VARIABLES:
 float distance;
@@ -32,6 +32,7 @@ void setup()
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
+  turnServo(0);
   distance = getLowestDist(10); //bug fix/hack for distance = .1 initially
 }
 
@@ -40,11 +41,11 @@ void loop() {
   for (int i = 0; i < 4; i ++) {
     changeSpeed(255, 4);
     distance = getLowestDist(4);
-    if (distance < 30) {
-      avoidWall(30);
+    if (distance < 40) {
+      avoidWall(40);
     }
-    delay(150);
     Serial.println(distance);
+    delay(50);
   }
 
   
@@ -54,7 +55,7 @@ void loop() {
   distance = getDistance();
   delay(100);
   
-  if (distance < 40) {
+  if (distance < 30) {
     int adjust = 70;
 
     float dist2 = getDistance();
@@ -84,9 +85,9 @@ void loop() {
    Checks to see if its going to crash into a wall and take corrective action
 */
 void avoidWall(int distThreshold) {
-  //slowDown(0); //problem here?
+  slowDown(10);
 
-  changeSpeed(0, 1);
+  //changeSpeed(0, 2);
   turnServo(90);
   delay(200);
   int leftDist = getLowestDist(10);
@@ -99,14 +100,14 @@ void avoidWall(int distThreshold) {
   turnServo(0);
 
   if (leftDist < distThreshold && rightDist < distThreshold) {
-    turn(true, 1000, 235);
-    turn(true, 1000, 235);
+    turn(true, 250, 235);
+    turn(true, 250, 235);
   }
   else if (leftDist > rightDist) {
-    turn(true, 1000, 235);
+    turn(true, 250, 235);
   }
   else {
-    turn(false, 1000, 235);
+    turn(false, 250, 235);
   }
 
 }
@@ -133,25 +134,24 @@ void turn(boolean left, int time, int speed) {
 float getDistance(void) {
   
   float duration;
-  float readTemp;
   float temperature;
-  float soundSpeed;
   float thisDistance;
 
-  // set up HC-SR04 by applying a 10 microsecond pulse to it
+  temperature = (5.0 * analogRead(tempPin) * 100.0) / 1024;
+
+  // send pulse
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  // reads the duration of the pulse when echoPin is high
-  //third argument is timeout in microseconds
+  //receive pulse. Third argument is timout in microseconds
   duration = pulseIn(echoPin, HIGH, 100000);
   if(duration == 0) {
     return MAX_DISTANCE;
   }
-  thisDistance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
+  thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
 
   return thisDistance;
 }
@@ -221,7 +221,7 @@ void slowDown (float minDist) {
   int initialDistance = getLowestDist(5);
   int currentDistance = initialDistance;
 
-  while (currentSpeed > 100) {
+  while (chenSpeed > 100) {
     chenSpeed = initialSpeed / (initialDistance - minDist) * (currentDistance - minDist);
     digitalWrite(M1, HIGH);
     digitalWrite(M2, HIGH);
