@@ -38,8 +38,8 @@ float rightDist;
 
 /* copy the next four line */
 /*******for straight line*******/
-const int tolerableDiff = 100;
-const float speedAdjustPercentage = 0.95;
+const int tolerableDiff = 50;
+const float speedAdjustPercentage = 0.96;
 const int correctionTime = 500;
 unsigned long leftTime, rightTime;
 
@@ -71,18 +71,20 @@ void setup()
   calibrate(leftSensor, rightSensor);
   leftTime = millis();
   rightTime = millis();
-  distance = getDistance();
-  maxSpeed = getMaxSpeed(leftSensor);
+  //distance = getDistance();
+  //maxSpeed = getMaxSpeed(leftSensor);
   currentSpeed = 255;
-  //analogWrite(E1, 253);
-  //analogWrite(E2, 255);
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+  analogWrite(E1, 255);
+  analogWrite(E2, 255);
   
 }
 
 void loop()
 {
   //accelerate(255, 4);
-  distance = getDistance();
+  //distance = getDistance();
   //delay(200);
   //Serial.print("Distance: ");
   //Serial.println(distance);
@@ -134,11 +136,13 @@ void loop()
   }
 
   else {*/
-    if (analogRead(leftSensor) < 50 && analogRead(rightSensor) < 50) {
+    if (analogRead(leftSensor) < 50) 
       leftTime = millis();
+    if (analogRead(rightSensor) < 50) {
       rightTime = millis();
-      Serial.println(leftTime);
     }
+    
+    
     if (leftTime > rightTime) {
       if (leftTime - rightTime < 500)
         straightLineCorrection(leftTime, rightTime);
@@ -324,11 +328,11 @@ void calibrate (int leftSensor, int rightSensor) {
   digitalWrite(M1, HIGH);
   digitalWrite(M2, HIGH);
   
-  analogWrite(E1, 140); 
+  analogWrite(E1, 60); 
   while (analogRead(leftSensor) > 50) {}
   analogWrite(E1, 0);
   
-  analogWrite(E2, 140);
+  analogWrite(E2, 60);
   while (analogRead(rightSensor) > 50) {}
   analogWrite(E2, 0);
 
@@ -338,14 +342,15 @@ void calibrate (int leftSensor, int rightSensor) {
 void straightLineCorrection (unsigned long leftTime, unsigned long rightTime) {
   if (abs(leftTime - rightTime) > tolerableDiff) {
     if (leftTime > rightTime) {
-      analogWrite(E1, 255);
-      analogWrite(E2, 0);
-      analogWrite(E2, 255);
-      //analogWrite(E2, (int) (currentSpeed * speedAdjustPercentage));
-      //analogWrite(E1, currentSpeed);
+      //analogWrite(E1, 255);
+      //analogWrite(E2, 0);
+      //delayMicroseconds(15);
+      //analogWrite(E2, 255);
+      analogWrite(E2, (int) (currentSpeed * speedAdjustPercentage));
+      analogWrite(E1, currentSpeed);
     }
     else {
-      analogWrite(E1, 0);
+      //analogWrite(E1, 0);
       analogWrite(E1, 255);
       analogWrite(E2, 255);
       //analogWrite(E1, (int) (currentSpeed * speedAdjustPercentage));
