@@ -37,46 +37,14 @@ void setup()
 
 void loop() {
 
-  for (int i = 0; i < 4; i ++) {
-    changeSpeed(255, 4);
-    distance = getLowestDist(4);
-    if (distance < 30) {
-      avoidWall(30);
-    }
-    delay(150);
-    Serial.println(distance);
+  changeSpeed(255, 4);
+  distance = getLowestDist(4);
+  if (distance < 30) {
+    avoidWall(30);
   }
+  delay(150);
+  Serial.println(distance);
 
-  
-
-  turnServo(70);
-  delay(50);
-  distance = getDistance();
-  delay(100);
-  
-  if (distance < 40) {
-    int adjust = 70;
-
-    float dist2 = getDistance();
-    //delta is the rate at which the wall is approaching. positive delta means wall is getting closer
-    float delta =  distance - dist2;
-    while(delta > .1 ) {
-      //slow/turn wheels
-      analogWrite(E1, 180);
-      analogWrite(E2, 80);
-      
-      //get new delta
-      distance = getLowestDist(3);
-      delay(100);
-      dist2 = getLowestDist(3);
-      delta =  distance - dist2;
-
-      //also keep the servo facing the side wall
-      turnServo(adjust);
-      adjust++;
-    }
-  }
-  turnServo(0);
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
@@ -131,7 +99,7 @@ void turn(boolean left, int time, int speed) {
    Function: getDistance - returns the distance measured  by the HC-SR05 and prints it onto the serial monitor
 */
 float getDistance(void) {
-  
+
   float duration;
   float readTemp;
   float temperature;
@@ -148,7 +116,7 @@ float getDistance(void) {
   // reads the duration of the pulse when echoPin is high
   //third argument is timeout in microseconds
   duration = pulseIn(echoPin, HIGH, 100000);
-  if(duration == 0) {
+  if (duration == 0) {
     return MAX_DISTANCE;
   }
   thisDistance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
