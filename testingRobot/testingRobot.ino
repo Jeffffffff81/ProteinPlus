@@ -12,6 +12,8 @@ const int ServoPin = 9;
 const int trigPin = 13;
 const int echoPin = 12;
 const int tempPin = A5;
+const int switchPin = 2;
+const int OpticalPowerPin = 3;
 
 //CONSTANTS:
 const int MAX_DISTANCE = 1000;
@@ -26,6 +28,8 @@ void setup()
   Serial.begin(9600);
   pinMode(M1, OUTPUT);
   pinMode(M2, OUTPUT);
+  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(OpticalPowerPin, HIGH);
 
   myservo.attach(ServoPin);
 
@@ -36,19 +40,73 @@ void setup()
 }
 
 void loop() {
+  if (digitalRead(switchPin)) {
+    digitalWrite(OpticalPowerPin, LOW);
 
-  changeSpeed(255, 4);
-  distance = getLowestDist(4);
-  if (distance < 30) {
-    avoidWall(30);
+    changeSpeed(255, 4);
+
+    distance = getLowestDist(4);
+    if (distance < 30) {
+      avoidWall(30);
+    }
   }
-  delay(150);
-  Serial.println(distance);
 
+  else {
+    digitalWrite(OpticalPowerPin, HIGH);
+    blackLine(200);
+  }
 
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
+void blackLine(int sensorThreshold) {
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+
+  int LsensorValue;
+  int MsensorValue;
+  int RsensorValue;
+
+  // read the input on analog pin 0:
+  LsensorValue = analogRead(A4);
+  delay(1);
+  MsensorValue = analogRead(A1);
+  delay(1);
+  RsensorValue = analogRead(A0);
+  delay(1);
+
+  analogWrite(E1, 255);
+  analogWrite(E2, 255);
+
+  // Case Straight Line
+  //  while (MsensorValue > sensorThreshold && LsensorValue < sensorThreshold && RsensorValue < sensorThreshold) {
+  //    LsensorValue = analogRead(A4);
+  //    delay(1);
+  //    MsensorValue = analogRead(A1);
+  //    delay(1);
+  //    RsensorValue = analogRead(A0);
+  //    delay(1);
+  //    analogWrite(E1, 155);
+  //    analogWrite(E2, 155);
+  //  }
+
+  // Case Steer Left - as long as left sensor detects black line
+  while (LsensorValue > sensorThreshold) {
+    LsensorValue = analogRead(A4);
+    analogWrite(E1, 50);
+    analogWrite(E2, 255);
+  }
+
+  // Case Steer Right - as long as right sensor detects black line
+  while (RsensorValue > sensorThreshold) {
+    RsensorValue = analogRead(A0);
+    analogWrite(E1, 255);
+    analogWrite(E2, 50);
+  }
+
+}
+
+
 /*
    Checks to see if its going to crash into a wall and take corrective action
 */
