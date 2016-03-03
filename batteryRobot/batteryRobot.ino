@@ -14,6 +14,9 @@ const int echoPin = 12;
 const int tempPin = A5;
 const int switchPin = 2;
 const int OpticalPowerPin = 3;
+const int LOpticalPin = A4;
+const int MLeftOpticalPin = A1;
+const int RLeftOpticalPin = A0;
 
 //CONSTANTS:
 const int MAX_DISTANCE = 1000;
@@ -68,11 +71,11 @@ void blackLine(int sensorThreshold) {
   int RsensorValue;
 
   // read the input on analog pin 0:
-  LsensorValue = analogRead(A4);
+  LsensorValue = analogRead(LOpticalPin);
   delay(1);
-  MsensorValue = analogRead(A1);
+  MsensorValue = analogRead(MOpticalPin);
   delay(1);
-  RsensorValue = analogRead(A0);
+  RsensorValue = analogRead(ROpticalPin);
   delay(1);
 
   if (LsensorValue <= sensorThreshold && RsensorValue <= sensorThreshold ) {
@@ -82,8 +85,6 @@ void blackLine(int sensorThreshold) {
 
   // Case Steer Left - as long as left sensor detects black line
   else if (LsensorValue > sensorThreshold) {
-
-    LsensorValue = analogRead(A4);
     analogWrite(E1, 20);
     analogWrite(E2, 100);
   }
@@ -91,8 +92,6 @@ void blackLine(int sensorThreshold) {
 
   // Case Steer Right - as long as right sensor detects black line
   else if (RsensorValue > sensorThreshold) {
-
-    RsensorValue = analogRead(A0);
     analogWrite(E1, 100);
     analogWrite(E2, 20);
   }
