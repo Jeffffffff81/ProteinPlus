@@ -15,8 +15,8 @@ const int tempPin = A5;
 const int switchPin = 2;
 const int OpticalPowerPin = 3;
 const int LOpticalPin = A4;
-const int MLeftOpticalPin = A1;
-const int RLeftOpticalPin = A0;
+const int MOpticalPin = A1;
+const int ROpticalPin = A0;
 
 //CONSTANTS:
 const int MAX_DISTANCE = 1000;
