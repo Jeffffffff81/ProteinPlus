@@ -39,8 +39,13 @@ float rightDist;
 /* copy the next four line */
 /*******for straight line*******/
 const int tolerableDiff = 50;
-const float speedAdjustPercentage = 0.96;
-const int correctionTime = 500;
+const float speedAdjustPercentage = 0.98;
+long timeDiff = 0;
+long absDiff;
+long totalDiff = 0;
+int resetWheel;
+int left = 0;
+int right = 0;
 unsigned long leftTime, rightTime;
 
 /**********for turning**********/
@@ -68,9 +73,9 @@ void setup()
    *  done. Notice that when it is done, both magnets will be aligned with its corresponding hall sensor, and
    *  there will be a 3 second delay for us to put it on the ground.
    */
-  calibrate(leftSensor, rightSensor);
-  leftTime = millis();
-  rightTime = millis();
+  //calibrate(leftSensor, rightSensor);
+  //leftTime = millis();
+  //rightTime = millis();
   //distance = getDistance();
   //maxSpeed = getMaxSpeed(leftSensor);
   currentSpeed = 255;
@@ -136,23 +141,39 @@ void loop()
   }
 
   else {*/
-    if (analogRead(leftSensor) < 50) 
+  if (resetWheel == 0) {
+    timeDiff = readDifference();
+    resetWheel = 1;
+  }
+    if (analogRead(leftSensor) < 50) {
       leftTime = millis();
+    }
     if (analogRead(rightSensor) < 50) {
       rightTime = millis();
     }
-    
-    
-    if (leftTime > rightTime) {
-      if (leftTime - rightTime < 500)
-        straightLineCorrection(leftTime, rightTime);
+
+    absDiff = leftTime - rightTime - timeDiff;
+    if (abs(absDiff) < 500 && left == 0) {
+      left = 1;
+      totalDiff += absDiff;
+      Serial.print("Diff: ");
+      Serial.println(totalDiff);
+      straightLineCorrection();
+    }
+
+    if (abs(absDiff) >= 500)
+      left = 0;
+    /*
+    if (leftTime - rightTime > timeDiff) {
+      if (leftTime - rightTime < 500 + timeDiff)
+        straightLineCorrection();
     }
     else {
-      if (rightTime - leftTime < 500)
-        straightLineCorrection(leftTime, rightTime);
+      if (rightTime - leftTime < 500 + timeDiff)
+        straightLineCorrection();
     }
     
-      
+    */
   //}
 }
 
@@ -323,6 +344,22 @@ float getMaxSpeed(int sensorPin) {
   return wheelSpeed;
 }
 
+int readDifference(){
+  int Lflag = 0;
+  int Rflag = 0;
+  while (Lflag == 0 || Rflag == 0) {
+    if (analogRead(leftSensor) < 50 && Lflag == 0) {
+      leftTime = millis();
+      Lflag = 1;
+    }
+    if (analogRead(rightSensor) < 50) {
+      rightTime = millis();
+      Rflag = 1;
+    }
+  }
+
+  return (leftTime - rightTime);
+}
 
 void calibrate (int leftSensor, int rightSensor) {
   digitalWrite(M1, HIGH);
@@ -339,24 +376,26 @@ void calibrate (int leftSensor, int rightSensor) {
   delay(3000);
 }
 
-void straightLineCorrection (unsigned long leftTime, unsigned long rightTime) {
-  if (abs(leftTime - rightTime) > tolerableDiff) {
-    if (leftTime > rightTime) {
-      //analogWrite(E1, 255);
+void straightLineCorrection () {
+  //if (abs(absDiff) > tolerableDiff) {
+    if (totalDiff > 0) {
+      analogWrite(E1, 255);
       //analogWrite(E2, 0);
       //delayMicroseconds(15);
       //analogWrite(E2, 255);
-      analogWrite(E2, (int) (currentSpeed * speedAdjustPercentage));
-      analogWrite(E1, currentSpeed);
+      analogWrite(E2, (int) (255.0 * (1 - 0.05 * (float) abs(totalDiff) / 500.0 )));
+      //analogWrite(E1, currentSpeed);
     }
     else {
       //analogWrite(E1, 0);
-      analogWrite(E1, 255);
+      analogWrite(E1, (int) (255.0 * (1 - 0.05 * (float) abs(totalDiff) / 500.0 )));
+      //delayMicroseconds(15);
+      //analogWrite(E1, 255);
       analogWrite(E2, 255);
       //analogWrite(E1, (int) (currentSpeed * speedAdjustPercentage));
       //analogWrite(E2, currentSpeed);
     }
-  }
+  //}
 }
 
 
