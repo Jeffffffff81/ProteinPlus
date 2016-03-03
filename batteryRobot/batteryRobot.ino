@@ -161,20 +161,20 @@ void blackLine(int sensorThreshold) {
   Serial.println(RsensorValue);
 
   if (LsensorValue <= sensorThreshold && RsensorValue <= sensorThreshold ) {
-    analogWrite(E1, 120);
-    analogWrite(E2, 120);
+    analogWrite(E1, 90);
+    analogWrite(E2, 90);
   }
 
   // Case Steer Left - as long as left sensor detects black line
   else if (LsensorValue > sensorThreshold) {
     analogWrite(E1, 10);
-    analogWrite(E2, 100);
+    analogWrite(E2, 70);
   }
 
 
   // Case Steer Right - as long as right sensor detects black line
   else if (RsensorValue > sensorThreshold) {
-    analogWrite(E1, 100);
+    analogWrite(E1, 70);
     analogWrite(E2, 10);
   }
 
@@ -198,14 +198,14 @@ void avoidWall(int distThreshold) {
   turnServo(0);
 
   if (leftDist < distThreshold && rightDist < distThreshold) {
-    turn(true, 1000, 100);
-    turn(true, 1000, 100);
+    turn(true, 800, 100);
+    turn(true, 800, 100);
   }
   else if (leftDist > rightDist) {
-    turn(true, 1000, 100);
+    turn(true, 800, 100);
   }
   else {
-    turn(false, 1000, 100);
+    turn(false, 800, 100);
   }
 
 }
@@ -250,8 +250,9 @@ float getDistance(void) {
   if (duration == 0) {
     return MAX_DISTANCE;
   }
-  //thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
-  thisDistance  = (331.5 + (0.6 * 25)) * duration / 2 * 100 / 1000000;
+  thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
+  Serial.println(temperature);
+  //thisDistance  = (331.5 + (0.6 * 25)) * duration / 2 * 100 / 1000000;
 
   return thisDistance;
 }
