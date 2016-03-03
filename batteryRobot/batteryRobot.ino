@@ -1,20 +1,22 @@
 #include <Servo.h>
 
 //PINS:
-int E1 = 5;
-int M1 = 4;
-int E2 = 6;
-int M2 = 7;
+const int E1 = 5;
+const int M1 = 4;
+const int E2 = 6;
+const int M2 = 7;
 
 Servo myservo;
-int ServoPin = 9;
+const int ServoPin = 9;
 
 const int trigPin = 13;
 const int echoPin = 12;
-const int tempSensor = A2;
+const int tempPin = A5;
+const int switchPin = 2;
+const int OpticalPowerPin = 3;
 
 //CONSTANTS:
-int MAX_DISTANCE = 1000;
+const int MAX_DISTANCE = 1000;
 
 //GLOBAL VARIABLES:
 float distance;
@@ -26,6 +28,8 @@ void setup()
   Serial.begin(9600);
   pinMode(M1, OUTPUT);
   pinMode(M2, OUTPUT);
+  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(OpticalPowerPin, HIGH);
 
   myservo.attach(ServoPin);
 
@@ -36,25 +40,73 @@ void setup()
 }
 
 void loop() {
+  if (digitalRead(switchPin)) {
+    digitalWrite(OpticalPowerPin, LOW);
 
-  changeSpeed(255, 4);
-  distance = getLowestDist(4);
-  if (distance < 30) {
-    avoidWall(30);
+    changeSpeed(255, 4);
+
+    distance = getLowestDist(4);
+    if (distance < 40) {
+      avoidWall(40);
+    }
   }
-  delay(150);
-  Serial.println(distance);
+
+  else {
+    digitalWrite(OpticalPowerPin, HIGH);
+    blackLine(150);
+  }
 
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
+void blackLine(int sensorThreshold) {
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+
+  int LsensorValue;
+  int MsensorValue;
+  int RsensorValue;
+
+  // read the input on analog pin 0:
+  LsensorValue = analogRead(A4);
+  delay(1);
+  MsensorValue = analogRead(A1);
+  delay(1);
+  RsensorValue = analogRead(A0);
+  delay(1);
+
+  if (LsensorValue <= sensorThreshold && RsensorValue <= sensorThreshold ) {
+    analogWrite(E1, 120);
+    analogWrite(E2, 120);
+  }
+
+  // Case Steer Left - as long as left sensor detects black line
+  else if (LsensorValue > sensorThreshold) {
+
+    LsensorValue = analogRead(A4);
+    analogWrite(E1, 20);
+    analogWrite(E2, 100);
+  }
+
+
+  // Case Steer Right - as long as right sensor detects black line
+  else if (RsensorValue > sensorThreshold) {
+
+    RsensorValue = analogRead(A0);
+    analogWrite(E1, 100);
+    analogWrite(E2, 20);
+  }
+
+}
+
+
 /*
    Checks to see if its going to crash into a wall and take corrective action
 */
 void avoidWall(int distThreshold) {
-  //slowDown(0); //problem here?
+  slowDown(5);
+  //changeSpeed(0, 3);
 
-  changeSpeed(0, 1);
   turnServo(90);
   delay(200);
   int leftDist = getLowestDist(10);
@@ -67,14 +119,14 @@ void avoidWall(int distThreshold) {
   turnServo(0);
 
   if (leftDist < distThreshold && rightDist < distThreshold) {
-    turn(true, 1000, 235);
-    turn(true, 1000, 235);
+    turn(true, 250, 235);
+    turn(true, 250, 235);
   }
   else if (leftDist > rightDist) {
-    turn(true, 1000, 235);
+    turn(true, 250, 235);
   }
   else {
-    turn(false, 1000, 235);
+    turn(false, 250, 235);
   }
 
 }
@@ -101,25 +153,24 @@ void turn(boolean left, int time, int speed) {
 float getDistance(void) {
 
   float duration;
-  float readTemp;
   float temperature;
-  float soundSpeed;
   float thisDistance;
 
-  // set up HC-SR04 by applying a 10 microsecond pulse to it
+  temperature = (5.0 * analogRead(tempPin) * 100.0) / 1024;
+
+  // send pulse
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  // reads the duration of the pulse when echoPin is high
-  //third argument is timeout in microseconds
+  //receive pulse. Third argument is timout in microseconds
   duration = pulseIn(echoPin, HIGH, 100000);
   if (duration == 0) {
     return MAX_DISTANCE;
   }
-  thisDistance = duration / (2 * 29); // improve measurement precision (change soundspeed to 29)
+  thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
 
   return thisDistance;
 }
