@@ -15,6 +15,9 @@ const int tempPin = A5;
 const int switchPin = 2;
 const int OpticalPowerPin = 3;
 
+const int leftHallPin = A2;
+const int rightHallPin = A3;
+
 //CONSTANTS:
 const int MAX_DISTANCE = 1000;
 
@@ -22,6 +25,11 @@ const int MAX_DISTANCE = 1000;
 float distance;
 int currentSpeed = 0;
 int servoPos = 0;
+/*******for straight line*******/
+const int tolerableDiff = 50;
+const float speedAdjustPercentage = 0.96;
+const int correctionTime = 500;
+unsigned long leftTime, rightTime;
 
 void setup()
 {
@@ -37,17 +45,21 @@ void setup()
   pinMode(echoPin, INPUT);
 
   distance = getLowestDist(10); //bug fix/hack for distance = .1 initially
+  calibrate();
 }
 
 void loop() {
   if (digitalRead(switchPin)) {
     digitalWrite(OpticalPowerPin, LOW);
 
+    correctWheels();
+
     changeSpeed(255, 4);
 
     distance = getLowestDist(4);
     if (distance < 40) {
       avoidWall(40);
+
     }
   }
 
@@ -56,6 +68,53 @@ void loop() {
     blackLine(150);
   }
 
+}
+//**************HALLEFFECT*************************//
+void correctWheels() {
+  if (analogRead(leftHallPin) < 50)
+    leftTime = millis();
+  if (analogRead(rightHallPin) < 50) {
+    rightTime = millis();
+  }
+
+
+  if (leftTime > rightTime) {
+    if (leftTime - rightTime < 500)
+      straightLineCorrection(leftTime, rightTime);
+  }
+  else {
+    if (rightTime - leftTime < 500)
+      straightLineCorrection(leftTime, rightTime);
+  }
+}
+
+void straightLineCorrection (unsigned long leftTime, unsigned long rightTime) {
+  if (abs(leftTime - rightTime) > tolerableDiff) {
+    if (leftTime > rightTime) {
+      analogWrite(E2, (int) (currentSpeed * speedAdjustPercentage));
+      analogWrite(E1, currentSpeed);
+    }
+    else {
+      analogWrite(E1, (int) (currentSpeed * speedAdjustPercentage));
+      analogWrite(E2, currentSpeed);
+    }
+  }
+}
+
+
+void calibrate () {
+  digitalWrite(M1, HIGH);
+  digitalWrite(M2, HIGH);
+
+  analogWrite(E1, 60);
+  while (analogRead(leftHallPin) > 50) {}
+  analogWrite(E1, 0);
+
+  analogWrite(E2, 60);
+  while (analogRead(rightHallPin) > 50) {}
+  analogWrite(E2, 0);
+
+  delay(2000);
 }
 
 //**************HIGHLEVELFUNCTIONS******************//
