@@ -1,5 +1,5 @@
 #include <IRremote.h>
-//#include <Servo.h>
+#include <Servo.h>
 
 
 /*  Infrared Remote Controller & IR Receiver demo program
@@ -104,15 +104,16 @@ void moveForward (int volt_speed, int duration) {
   delay(2000);
 
 
-  //  start_time = millis();
-  //
-  //  for (i=0; i<2*duration; i++) {
-  //    end_time = millis();
-  //    if ((unsigned long)end_time-start_time >= duration){
-  //      setMoveSpeed(0, FORWARD);
-  //      delay(2000);
-  //    }
-  //  }
+  start_time = millis();
+
+  while (1) {
+    end_time = millis();
+    if ((unsigned long)end_time - start_time >= duration) {
+      setMoveSpeed(0, FORWARD);
+      delay(2000);
+    }
+    break;
+  }
 
 }
 
@@ -211,7 +212,6 @@ void setMotorSpeed (int motor, int speed, int direction) {
 //    Serial.println(results.value, HEX);
 //  }
 //}
-
 
 
 
