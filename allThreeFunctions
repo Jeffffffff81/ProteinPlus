@@ -1,0 +1,684 @@
+#include <IRremote.h>
+#include <Servo.h>
+
+//declarations for the remote buttons
+//const int siren_button = 0x52E9; //red button
+//const long patrol_button = 0x32E9; //green button
+//const int forward_button = 0x2F0; //up arrow key
+//const int stop_button = 0xAF0;    //down arrow key
+//const int left_button = 0x2D0;    //left arrow key
+//const int right_button = 0xCD0;    //right arrow key
+
+// IR remote controller: each button sets the robot to a specific mode when it's pressed
+const long siren_button = 0xFC67AFAE; //red button (C)
+const long patrol_button = 0xEFBE2D68; //green button (D)
+const long forward_button = 0x2C2E80FF; //up arrow key
+const long backward_button = 0x5A1A483D; //down arrow key
+const long stop_button = 0xCB3CC07F;    //okay arrow key
+const long left_button = 0x9578646A;    //left arrow key
+const long right_button = 0xDC18602C;    //right arrow key
+const long straight_line_button = 0xDCC99F1F;    //yellow triangle (a)
+const long black_line_button = 0xCFEF4134;    //blue button (B)
+
+// IR remote controller: use different flags to switch between modes
+boolean siren_flag  = false;
+boolean patrol_flag  = false;
+boolean forward_flag  = false;
+boolean backward_flag = false;
+boolean stop_flag  = false;
+boolean left_flag  = false;
+boolean right_flag  = false;
+boolean straight_line_flag = false;
+boolean black_line_flag = false;
+
+// PIEZO PIN
+const int piezo_pin = 9;
+
+// OPTICAL SENSOR PINS
+const int LOpticalPin = A1;
+const int ROpticalPin = A0;
+const int opticalPowerPin = 8;
+
+// IR SENSOR PINS
+const int IR_pin = 3;
+IRrecv irrecv(IR_pin);
+decode_results signals;
+
+// LIGHT PINS
+const int blue_pin = 11;
+const int red_pin = 10;
+
+// MOTOR PINS:
+const int L_MOTOR_SPEED_PIN = 5;      // E1
+const int L_MOTOR_DIRECTION_PIN = 4;  // M1
+const int R_MOTOR_SPEED_PIN = 6;      // E2
+const int R_MOTOR_DIRECTION_PIN = 7;  // M2
+
+// ULTRASONIC RANGE FINDER PINS
+const int tempPin = A5;
+const int trigPin = 12;
+const int echoPin = 13;
+
+// SERVO SETUP
+Servo myservo;
+const int ServoPin = 2;
+int servoPos = 90;
+
+// GOLBAL VARIABLES
+const int MAX_DISTANCE = 1000;
+const float RIGHT_WHEEL_CORRECT = 1;
+unsigned long previousMillis = 0;
+const long interval = 1000;
+int count = 0;
+
+const int L_MOTOR = 1;
+const int R_MOTOR = 2;
+const int FORWARD = HIGH;
+const int BACKWARD = LOW;
+const int LEFT = 1;
+const int RIGHT = 2;
+
+const int TURN_SPEED = 215;
+const int MIN_SPEED = 60;
+const int MAX_SPEED = 255;
+const int ROTATION_FACTOR = 5; // at TURN_SPEED, each degree rotation needs ROTATION_FACTOR milliseconds
+
+
+void setup()
+{
+  Serial.begin(9600);
+  irrecv.enableIRIn();   // enable input from IR receiver
+
+  pinMode(L_MOTOR_DIRECTION_PIN, OUTPUT);
+  pinMode(R_MOTOR_DIRECTION_PIN, OUTPUT);
+
+  pinMode(echoPin, INPUT);            // setup ultrasonic ranger finder sensor
+  pinMode(trigPin, OUTPUT);
+  myservo.attach(ServoPin);
+
+  pinMode(blue_pin, OUTPUT);          // initialize digital pin 13 as OUTPUT (blue LED)
+  pinMode(red_pin, OUTPUT);           // initialize digital pin 11 as OUTPUT (red LED)
+  pinMode(piezo_pin, OUTPUT);         // controls Piezo
+  pinMode(opticalPowerPin, OUTPUT);   // controls optical sensors
+
+  //initially set all LED pins to HIGH so they are all turned off
+  digitalWrite(blue_pin, HIGH);
+  digitalWrite(red_pin, HIGH);
+}
+void loop() {
+  // turn off power to breadboard (for following a black line) unless we actually use it:
+  digitalWrite(opticalPowerPin, LOW);
+
+  // when one of the following flags is set to true, execute the corresponding function
+  if (straight_line_flag == true) {
+    straightLine();
+  }
+
+  if (patrol_flag == true) {
+    patrol(200, 1);
+  }
+
+  if (black_line_flag == true) {
+    digitalWrite(opticalPowerPin, HIGH);
+    blackLine(150);
+  }
+
+  if (forward_flag == true ) {
+    setMotorSpeed (L_MOTOR, 160, FORWARD);
+    setMotorSpeed (R_MOTOR, 160, FORWARD);
+  }
+
+  if (backward_flag == true) {
+    setMotorSpeed (L_MOTOR, 160, BACKWARD);
+    setMotorSpeed (R_MOTOR, 160, BACKWARD);
+  }
+
+  // when one of the following flags is set to true,
+  // execute the corresponding function and set the flag back to flase again
+  if (left_flag == true) {
+    left_flag = false;
+    turn(90, LEFT);
+  }
+  if (right_flag == true) {
+    right_flag = false;
+    turn(90, RIGHT);
+  }
+  if (stop_flag == true) {
+    stop_flag = false;
+    stop();
+  }
+
+
+  // police sirens and lights
+  unsigned long currentMillis = millis();
+  // change the LED lights from one to another if one second has passed
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+    changeLights();
+  }
+
+  // if we received any singals from IR remove controller,
+  // then check the case statement to decide which function to excute
+  if (irrecv.decode(&signals)) {
+    // for testing purposes: find out the corrsponding HEX value when a button is pressed
+    // Serial.println(signals.value, HEX);
+
+    switch (signals.value) {
+      // execute Principle Function 1: moving in a straight line and avoiding obstacles
+      case straight_line_button :
+        // if the flag is true before we pressed the button, then we set it to false
+        // when the flag is true, execute the corresponding function
+        if (straight_line_flag == true) {
+          straight_line_flag = false;
+          stop();
+          delay(400);
+        }
+
+        // if the flag is false before we pressed the button,
+        // then we set it to true, and all other flags to false
+        else {
+          black_line_flag = false;
+          straight_line_flag = true;
+          siren_flag = false;
+          patrol_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+          delay(400);
+        }
+        break;
+
+      // execute Principle Function 2: following a black line on the ground
+      case black_line_button :
+        if (black_line_flag == true) {
+          black_line_flag = false;
+          stop();
+        }
+        else {
+          black_line_flag = true;
+          straight_line_flag = false;
+          siren_flag = false;
+          patrol_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // turn on the siren
+      case siren_button :
+        if (siren_flag == true)
+          siren_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          siren_flag = true;
+          patrol_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // execute patrol function: scanning through an area 
+      // by doing: go straight, turn left, go straight, turn left, go straight, turn right, go straight, turn right and so on
+      case patrol_button :
+        if (patrol_flag == true)
+          patrol_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = true;
+          siren_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // move the robot forward
+      case forward_button :
+        if (forward_flag == true)
+          forward_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = false;
+          // siren_flag = false;
+          forward_flag = true;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // move the robot backward
+      case backward_button :
+        if (backward_flag == true)
+          backward_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = false;
+          // siren_flag = false;
+          forward_flag = false;
+          backward_flag = true;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // stop the robot 
+      case stop_button :
+        if (stop_flag == true)
+          stop_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = false;
+          //siren_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = true;
+          left_flag = false;
+          right_flag = false;
+        }
+        break;
+
+      // turn the robot to the left 
+      case left_button :
+        if (left_flag == true)
+          left_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = false;
+          //siren_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = true;
+          right_flag = false;
+        }
+        break;
+
+      // turn the robot to the right
+      case right_button :
+        if (right_flag == true)
+          right_flag = false;
+        else {
+          black_line_flag = false;
+          straight_line_flag = false;
+          patrol_flag = false;
+          //siren_flag = false;
+          forward_flag = false;
+          backward_flag = false;
+          stop_flag = false;
+          left_flag = false;
+          right_flag = true;
+        }
+        break;
+    }
+
+    irrecv.resume(); // get the next signal
+  }
+}
+
+
+
+******************************************FUNCTIONS********************************************************
+
+/*
+ * move robot forward in a stright line until it encounters a 
+ * wall at some distance. Then, it checks left and right and turns towards
+ * the appropiate direction, then resumes moving forward.
+ */
+void straightLine() {
+  //the while loop may not be necessary, but it works and we cannot change our code anymores
+  while (true) {
+    if (irrecv.decode(&signals)) {
+      return;
+    }
+
+    const int distThresHold = 30;
+
+    setMoveSpeed(160, FORWARD);
+
+    float distance = getLowestDist(5);
+
+
+    if (distance < distThresHold) {
+      stop();
+      turnServo(90);
+      delay(100);
+      int leftDist = getLowestDist(5);
+      turnServo(-90);
+      delay(100);
+      int rightDist = getLowestDist(5);
+      delay(100);
+
+      // if both the left and right sides are block, turn 180 degrees
+      if (leftDist < distThresHold && rightDist < distThresHold) {
+        turn(180, LEFT);
+      }
+
+      // if the right side has more space than the left side, turn right
+      else if (leftDist < rightDist) {
+        turn(90, RIGHT);
+      }
+      
+      // if the left side has more space than the right side, turn left
+      else {
+        turn(90, LEFT);
+      }
+    }
+    turnServo(0);   // move the servo back to central position
+  }
+}
+
+
+/*
+ * autonomously follows a black tape based on the contrasts of its environment by using optical sensors
+ * sensorThreshold: the threshold value of the black tape used dependent of its surrounding contrast
+ */
+void blackLine(int sensorThreshold) {
+  digitalWrite(L_MOTOR_DIRECTION_PIN, HIGH);
+  digitalWrite(R_MOTOR_DIRECTION_PIN, HIGH);
+
+  int LsensorValue;
+  int MsensorValue;
+  int RsensorValue;
+
+  // read the input on analog pins:
+  LsensorValue = analogRead(LOpticalPin);
+  delay(1);
+  RsensorValue = analogRead(ROpticalPin);
+  delay(1);
+
+  if (LsensorValue <= sensorThreshold && RsensorValue <= sensorThreshold ) {
+    analogWrite(L_MOTOR_SPEED_PIN, 100);
+    analogWrite(R_MOTOR_SPEED_PIN, 100);
+  }
+
+  // Case Steer Left - as long as left sensor detects black line
+  else if (LsensorValue > sensorThreshold) {
+    analogWrite(L_MOTOR_SPEED_PIN, 20);
+    analogWrite(R_MOTOR_SPEED_PIN, 100);
+  }
+
+  // Case Steer Right - as long as right sensor detects black line
+  else if (RsensorValue > sensorThreshold) {
+    analogWrite(L_MOTOR_SPEED_PIN, 100);
+    analogWrite(R_MOTOR_SPEED_PIN, 20);
+  }
+
+}
+
+
+/*
+ * Simulates a police car and alternates lights in between red and blue
+ */
+void changeLights(void) {
+  if (siren_flag == true) {
+    switch (count) {
+      case 0:       // changes to red light
+        digitalWrite(red_pin, HIGH);
+        digitalWrite(blue_pin, LOW);
+        //analogWrite(piezo_pin, 220);
+        //this is a hack. the ir library and
+        //the tone function conflict, so I had
+        //to manually create the signal
+        for (int i = 0; i < 800; i++) {
+          if (irrecv.decode(&signals)) {
+            break;
+          }
+          digitalWrite(piezo_pin, HIGH);
+          delayMicroseconds(500);
+          digitalWrite(piezo_pin, LOW);
+          delayMicroseconds(500);
+        }
+        count++;
+        break;
+      case 1:     // changes to blue light
+        digitalWrite(blue_pin, HIGH);
+        digitalWrite(red_pin, LOW);
+        //analogWrite(piezo_pin, 250);
+        for (int i = 0; i < 400; i++) {
+          if (irrecv.decode(&signals)) {
+            break;
+          }
+          digitalWrite(piezo_pin, HIGH);
+          delayMicroseconds(1000);
+          digitalWrite(piezo_pin, LOW);
+          delayMicroseconds(1000);
+        }
+        count = 0;
+        break;
+    }
+  }
+  else {
+    digitalWrite(blue_pin, HIGH);
+    digitalWrite(red_pin, HIGH);
+    analogWrite(piezo_pin, 0);
+  }
+}
+
+
+
+/*
+ * Simulates a police car and patrols around an area by following the pattern: 
+ * go straight, turn left, go straight, turn left, go straight, turn right, go straight, turn right and so on
+ * for a loop_num of times at a speed set by patrol_speed
+ * patrol_speed: sets the speed at which the robot moves 
+ * loop_num: sets the number of times that the robot patrols around
+ */
+void patrol(int patrol_speed, int loop_num) {
+  setMoveSpeed (patrol_speed, FORWARD);
+  int i;
+  for (i = 0; i < loop_num; i++) {
+    if (irrecv.decode(&signals)) {
+      break;
+    }
+    moveForward (patrol_speed, 2000);
+    turn(90, LEFT);
+    moveForward (patrol_speed, 2000);
+    turn(90, LEFT);
+    moveForward (patrol_speed, 2000);
+    turn(90, RIGHT);
+    moveForward (patrol_speed, 2000);
+    turn(90, RIGHT);
+  }
+}
+
+/*
+ * Slows down the robot. The robots speed is a function of its distance
+ * from the wall. It can also stop at some minDist from the wall.
+ * minDist: the minimal distance from an obstacle at which we want the robot to stop 
+ * currentSpeed: robot's current speed
+ */
+void slowDown (float minDist, int currentSpeed) {
+  int chenSpeed = currentSpeed;
+  int initialSpeed = currentSpeed;
+  int initialDistance = getLowestDist(5);
+  int currentDistance = initialDistance;
+
+  while (chenSpeed > 100) {
+    chenSpeed = initialSpeed / (initialDistance - minDist) * (currentDistance - minDist);
+    digitalWrite(L_MOTOR_DIRECTION_PIN, HIGH);
+    digitalWrite(R_MOTOR_DIRECTION_PIN, HIGH);
+    analogWrite(L_MOTOR_SPEED_PIN, chenSpeed);   //PWM Speed Control
+    analogWrite(R_MOTOR_SPEED_PIN, chenSpeed);   //PWM Speed Control
+    delay(10);
+    currentDistance = getLowestDist(10);
+  }
+  analogWrite(L_MOTOR_SPEED_PIN, 0);   //PWM Speed Control
+  analogWrite(R_MOTOR_SPEED_PIN, 0);   //PWM Speed Control
+}
+
+
+/*
+ * Move the robot forward at a specific speed for a specific amount of time
+ * volt-speed: the speed at which the robot moves
+ * duration: the amount of time that the robot will move
+ */
+void moveForward (int volt_speed, int duration) {
+  unsigned long start_time, end_time;
+  int i;
+
+  while (1) {
+    if (irrecv.decode(&signals)) {
+      break;
+    }
+    setMoveSpeed(volt_speed, FORWARD);
+    delay(duration);
+    setMoveSpeed(0, FORWARD);
+  }
+}
+
+/*
+   Set the speed of the robot in movement
+   speed: the spped in volts (0-255) in which the robot moves at
+   direction: the direction in which the robot will move (forward or backward)
+*/
+void setMoveSpeed (int speed, int direction) {
+  setMotorSpeed(L_MOTOR, speed, direction);
+  setMotorSpeed(R_MOTOR, (int) ((float) (speed * RIGHT_WHEEL_CORRECT)), direction);
+}
+
+/*
+   Set the speed of a given motor in a given direction
+   motor: the motor that will be controlled (left motor or right motor)
+   speed: the speed in volts (0-255) that will be sent to motor
+   direction: the direction in which the motor will spin (forward or backward)
+*/
+void setMotorSpeed (int motor, int speed, int direction) {
+  int dir_pin, speed_pin;
+  // decide which motor (left or right) to control
+  if (motor == L_MOTOR) {
+    dir_pin = L_MOTOR_DIRECTION_PIN;
+    speed_pin = L_MOTOR_SPEED_PIN;
+  }
+  else {
+    dir_pin = R_MOTOR_DIRECTION_PIN;
+    speed_pin = R_MOTOR_SPEED_PIN;
+  }
+  digitalWrite(dir_pin, direction);       // set the direction of motor
+  analogWrite(speed_pin, speed);          // set the speed of motor
+}
+
+/*
+ * Stop the robot immediately.
+ */
+void stop() {
+  setMotorSpeed(L_MOTOR, 0, FORWARD);
+  setMotorSpeed(R_MOTOR, 0, FORWARD);
+}
+
+/*
+ * Turn the robot by a certain degrees in a certain direction 
+ * rotation: turn the robot for rotation degrees
+ * direction: turn the robot at a certain direction (LEFT or RIGHT)
+ */
+void turn(int rotation, int direction) {
+  // stop the robot before turning
+  stop();
+  delay(20);
+
+  if (direction == LEFT) {
+    setMotorSpeed(L_MOTOR, TURN_SPEED, BACKWARD);
+    setMotorSpeed(R_MOTOR, TURN_SPEED, FORWARD);
+  }
+  if (direction == RIGHT) {
+    setMotorSpeed(L_MOTOR, TURN_SPEED, FORWARD);
+    setMotorSpeed(R_MOTOR, TURN_SPEED, BACKWARD); 
+  }
+  delay(rotation * (ROTATION_FACTOR));
+
+  setMotorSpeed(L_MOTOR, 0, FORWARD);
+  setMotorSpeed(R_MOTOR, 0, BACKWARD);
+}
+
+
+/*
+ * Get the distance from the robot to something in front of the robot using ultrasonic range finder
+ * Returns the distance as float
+ */
+float getDistance() {
+
+  float duration;
+  float temperature;
+  float thisDistance;
+
+  temperature = (5.0 * analogRead(tempPin) * 100.0) / 1024;
+
+  // send pulse
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  //receive pulse. Third argument is timout in microseconds
+  duration = pulseIn(echoPin, HIGH, 100000);
+  if (duration == 0) {
+    return MAX_DISTANCE;
+  }
+  thisDistance  = (331.5 + (0.6 * temperature)) * duration / 2 * 100 / 1000000;
+
+  return thisDistance;
+}
+
+
+/*
+ * Reads distance using getDistance() function multiple times and returns the lowest reading
+ * Returns the shortest distance as float
+ */
+float getLowestDist(int count) {
+  float current;
+  float lowest = getDistance();
+  for (int i = 0; i < count; i++) {
+
+    current = getDistance();
+    if ( current < lowest ) {
+      lowest = current;
+    }
+  }
+  return lowest;
+}
+
+/*
+ * Turn the servo to a specific angle. 
+ * dir: turn the servo to that angle: 90 means left, and -90 means right.
+ */
+void turnServo(int dir) {
+
+  if (dir > 90 || dir < -90) {
+    return;
+  }
+
+  //If turning left:
+  while (servoPos <= dir + 90) {
+    myservo.write(servoPos);
+    servoPos++;
+    delay(2);
+  }
+  //If turning right
+  while (servoPos >= dir + 90) {
+    myservo.write(servoPos);
+    servoPos--;
+    delay(2);
+  }
+}
+
+
